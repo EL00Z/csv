@@ -1,229 +1,398 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>CSV Data Cleaner — Smart Filter</title>
-    <style>
-        :root{
-            --bg:#f6f8fb;
-            --card:#ffffff;
-            --muted:#6b7280;
-            --accent1:#4f46e5;
-            --accent2:#8b5cf6;
-            --danger:#ef4444;
-            --success:#10b981;
-        }
-        *{box-sizing:border-box}
-        body{
-            font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial;
-            margin:0;padding:28px;background:linear-gradient(180deg,#f8fbff 0%, #fff8ff 100%);
-            color:#0f172a;
-        }
-        .container{
-            max-width:1200px;margin:0 auto;border-radius:12px;background:var(--card);box-shadow:0 10px 30px rgba(2,6,23,0.06);overflow:hidden;
-        }
-        .header{
-            padding:26px 28px;background:linear-gradient(90deg,var(--accent1),var(--accent2));color:white;
-            display:flex;align-items:center;justify-content:space-between;gap:12px;
-        }
-        .header h1{font-size:18px;margin:0}
-        .header p{margin:0;opacity:0.9;font-size:13px}
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CSV Data Cleaner — Smart Filter</title>
+  <style>
+    :root{
+      --bg:#f6f7fb;
+      --card:#ffffff;
+      --muted:#6b7280;
+      --accent:#2563eb; /* simpler single accent */
+      --accent-2:#7c3aed;
+      --danger:#ef4444;
+      --success:#10b981;
+    }
+    *{box-sizing:border-box}
+    body{
+      font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial;
+      margin:0;padding:28px;background:linear-gradient(180deg,#fbfdff 0%, #fff8ff 100%);
+      color:#0f172a;
+    }
+    .container{max-width:1180px;margin:0 auto;border-radius:12px;background:var(--card);box-shadow:0 10px 30px rgba(2,6,23,0.06);overflow:hidden;}
+    .header{padding:20px 22px;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:white;display:flex;align-items:center;justify-content:space-between}
+    .header h1{font-size:18px;margin:0}
+    .header p{margin:0;opacity:0.95;font-size:13px}
+    .main{display:grid;grid-template-columns:1fr 380px;gap:20px;padding:18px}
+    @media (max-width:980px){ .main{grid-template-columns:1fr;padding:12px} }
 
-        .main{display:grid;grid-template-columns:1fr 400px;gap:20px;padding:20px}
-        @media (max-width:1000px){ .main{grid-template-columns:1fr;padding:16px} }
+    .block{background:var(--bg);padding:12px;border-radius:10px}
+    .file-area{display:flex;flex-direction:column;gap:10px}
+    .btn-file{display:inline-flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:white;border:none;cursor:pointer;font-weight:700}
+    input[type=file]{display:none}
+    .file-info{background:white;padding:10px;border-radius:8px;border:1px solid #eef2ff;font-size:13px;color:var(--muted)}
+    .col-select{width:100%;padding:10px;border-radius:8px;border:1px solid #e6e9ef;font-size:14px;background:white}
 
-        .block{background:var(--bg);padding:14px;border-radius:10px}
-        .file-area{display:flex;flex-direction:column;gap:10px}
-        .btn-file{
-            display:inline-flex;align-items:center;gap:10px;padding:10px 14px;border-radius:999px;background:linear-gradient(90deg,var(--accent1),var(--accent2));color:white;border:none;cursor:pointer;font-weight:700;box-shadow: 0 6px 18px rgba(99,102,241,0.12);
-            transition:transform .12s ease, box-shadow .12s ease;
-        }
-        .btn-file:active{transform:translateY(1px);box-shadow:0 4px 14px rgba(99,102,241,0.10)}
-        input[type=file]{display:none}
+    .filter-grid{display:flex;gap:14px;margin-top:12px}
+    .filter-card{flex:1;background:white;border-radius:10px;padding:12px;border:1px solid #eef2ff}
+    .filter-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+    .filter-head strong{font-size:14px}
+    .tiny{font-size:12px;color:var(--muted)}
 
-        .file-info{background:white;padding:10px;border-radius:8px;border:1px solid #eef2ff;font-size:13px;color:var(--muted)}
-        .col-select{width:100%;padding:10px;border-radius:8px;border:1px solid #e6e9ef;font-size:14px;background:white}
+    .toggle-switch{position:relative;width:46px;height:26px}
+    .toggle-switch input{display:none}
+    .toggle-slider{position:absolute;inset:0;background:#e6e7ee;border-radius:999px;cursor:pointer;transition:.16s}
+    .toggle-slider:before{content:"";position:absolute;width:20px;height:20px;border-radius:50%;background:white;left:3px;top:3px;transition:.16s;box-shadow:0 6px 16px rgba(2,6,23,0.08)}
+    .toggle-switch input:checked + .toggle-slider{background:linear-gradient(90deg,var(--accent),var(--accent-2))}
+    .toggle-switch input:checked + .toggle-slider:before{transform:translateX(20px)}
 
-        .filter-grid{display:flex;gap:14px;margin-top:12px}
-        .filter-card{flex:1;background:white;border-radius:10px;padding:12px;border:1px solid #f0f3ff}
-        .filter-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-        .filter-head strong{font-size:14px}
-        .small{font-size:12px;color:var(--muted)}
+    .keywords-list{min-height:56px;padding:8px;border-radius:10px;background:#fbfbfe;border:1px dashed #eef2ff;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+    .tag{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:#f8fafc;color:#0f172a;font-size:13px;border:1px solid #eef2ff;cursor:pointer;transition:transform .08s}
+    .tag:hover{transform:translateY(-3px)}
+    .tag.ex{background:#fff7f8;border-color:#ffeef0}
+    .tag .remove{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:transparent;color:var(--muted);font-weight:700}
+    .add-area{display:flex;gap:8px;margin-top:10px}
+    .custom-input{flex:1;padding:9px;border-radius:8px;border:1px solid #e6e9ef;font-size:13px;background:white}
+    .btn{padding:9px 12px;border-radius:8px;border:none;cursor:pointer;font-weight:700}
+    .btn.add{background:var(--accent);color:white}
+    .btn.clear{background:#fff;border:1px solid #eef2ff;color:var(--muted)}
+    .btn.clear:active{transform:translateY(1px)}
 
-        /* toggle */
-        .toggle-switch{position:relative;width:52px;height:30px}
-        .toggle-switch input{display:none}
-        .toggle-slider{position:absolute;inset:0;background:#e6e7ee;border-radius:999px;cursor:pointer;transition:all .18s}
-        .toggle-slider:before{content:"";position:absolute;width:22px;height:22px;border-radius:50%;background:white;left:3px;top:4px;transition:all .18s;box-shadow:0 4px 12px rgba(2,6,23,0.12)}
-        .toggle-switch input:checked + .toggle-slider{background:linear-gradient(90deg,var(--accent1),var(--accent2))}
-        .toggle-switch input:checked + .toggle-slider:before{transform:translateX(22px)}
+    .right{display:flex;flex-direction:column;gap:12px}
+    .stats{display:flex;gap:8px;justify-content:space-between;align-items:center}
+    .stat{background:white;padding:10px;border-radius:8px;flex:1;border:1px solid #f0f3ff;text-align:center}
+    .stat .num{font-weight:800;color:var(--accent);font-size:18px}
+    .preview{background:white;border-radius:10px;padding:12px;border:1px solid #eef2ff;overflow:auto}
 
-        .keywords-list{min-height:56px;padding:8px;border-radius:10px;background:#fbfbfe;border:1px dashed #eef2ff;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-        .tag{display:inline-flex;align-items:center;gap:8px;padding:7px 10px;border-radius:999px;background:linear-gradient(90deg,#eef2ff,#fff);color:#111827;font-size:13px;border:1px solid #eef2ff;cursor:pointer;transition:transform .10s,box-shadow .08s}
-        .tag:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(15,23,42,0.06)}
-        .tag.ex{background:linear-gradient(90deg,#fff7f8,#fff);border-color:#ffeef0}
-        .tag .remove{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:transparent;color:var(--muted);font-weight:700}
-        .add-area{display:flex;gap:8px;margin-top:10px}
-        .custom-input{flex:1;padding:9px;border-radius:8px;border:1px solid #e6e9ef;font-size:13px;background:white}
-        .btn{padding:9px 12px;border-radius:10px;border:none;cursor:pointer;font-weight:700}
-        .btn.add{background:linear-gradient(90deg,var(--accent1),var(--accent2));color:white;box-shadow:0 8px 20px rgba(79,70,229,0.08);transition:transform .12s}
-        .btn.add:active{transform:translateY(1px)}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:white;text-align:left;padding:8px;font-weight:700;position:sticky;top:0}
+    td{padding:8px;border-bottom:1px solid #f7f9ff}
 
-        .right{display:flex;flex-direction:column;gap:12px}
-        .stats{display:flex;gap:8px;justify-content:space-between;align-items:center}
-        .stat{background:white;padding:10px;border-radius:8px;flex:1;border:1px solid #f0f3ff;text-align:center}
-        .stat .num{font-weight:800;color:var(--accent1);font-size:18px}
-        .preview{background:white;border-radius:10px;padding:12px;border:1px solid #eef2ff;overflow:auto}
+    .controls{display:flex;gap:8px;align-items:center}
+    .download{background:linear-gradient(90deg,#06b6d4,#7c3aed);color:white;padding:8px 12px;border-radius:8px;border:none;font-weight:700;cursor:pointer}
+    .process-area{margin-top:12px;display:flex;gap:8px;align-items:center}
+    .process-btn{background:var(--accent);color:white;padding:10px 14px;border-radius:10px;border:none;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:10px}
+    .process-btn[disabled]{opacity:0.6;cursor:not-allowed}
+    .spinner{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,0.35);border-top-color:white;animation:spin .9s linear infinite;display:inline-block}
+    @keyframes spin{to{transform:rotate(360deg)}}
 
-        table{width:100%;border-collapse:collapse;font-size:13px}
-        th{background:linear-gradient(90deg,var(--accent1),var(--accent2));color:white;text-align:left;padding:8px;font-weight:700;position:sticky;top:0}
-        td{padding:8px;border-bottom:1px solid #f7f9ff}
-
-        .controls{display:flex;gap:8px;align-items:center}
-        .download{background:linear-gradient(90deg,#06b6d4,#7c3aed);color:white;padding:8px 12px;border-radius:8px;border:none;font-weight:800;cursor:pointer}
-        .process-area{margin-top:12px;display:flex;gap:8px;align-items:center}
-        .process-btn{
-            background:linear-gradient(90deg,var(--accent1),var(--accent2));color:white;padding:12px 16px;border-radius:12px;border:none;font-weight:800;cursor:pointer;
-            display:inline-flex;align-items:center;gap:10px;transition:transform .12s,box-shadow .12s,opacity .12s;
-        }
-        .process-btn:hover{transform:translateY(-3px);box-shadow:0 18px 40px rgba(59,53,235,0.12)}
-        .process-btn:active{transform:translateY(0)}
-        .process-btn:disabled{opacity:0.6;cursor:not-allowed;transform:none;box-shadow:none}
-        .spinner{width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,0.35);border-top-color:white;animation:spin .9s linear infinite;display:inline-block}
-        @keyframes spin{to{transform:rotate(360deg)}}
-
-        /* subtle helpers */
-        .muted{color:var(--muted)}
-        .tiny{font-size:12px;color:var(--muted)}
-        .tag .remove:hover{color:#111827}
-    </style>
+    .controls-compact{display:flex;gap:8px;align-items:center}
+  </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <div>
-                <h1>CSV Data Cleaner</h1>
-                <p class="tiny">Robust CSV parsing + smart include/exclude filters — interactive, instant feedback.</p>
-            </div>
-            <div class="tiny">Tip: Click any keyword tag to remove it. Changes auto-apply.</div>
-        </div>
-
-        <div class="main">
-            <!-- LEFT -->
-            <div>
-                <div class="block file-area">
-                    <label class="btn-file" for="csvFile">📁 Choose CSV file</label>
-                    <input id="csvFile" type="file" accept=".csv" />
-                    <div id="fileInfo" class="file-info" style="display:none">
-                        <div><strong>File:</strong> <span id="fileName"></span></div>
-                        <div style="margin-top:6px" class="tiny"><strong>Size:</strong> <span id="fileSize"></span> • <strong>Rows:</strong> <span id="rowCount"></span> • <strong>Columns:</strong> <span id="columnCount"></span></div>
-                    </div>
-
-                    <div id="colBlock" style="display:none;margin-top:12px">
-                        <div class="tiny" style="margin-bottom:6px">Select column to filter</div>
-                        <select id="columnSelect" class="col-select"></select>
-                    </div>
-                </div>
-
-                <div class="filter-grid">
-                    <div class="filter-card">
-                        <div class="filter-head">
-                            <div>
-                                <strong>✅ Inclusion Keywords</strong>
-                                <div class="tiny">When enabled, row must include at least one of these</div>
-                            </div>
-                            <label class="toggle-switch">
-                                <input id="inclusionToggle" type="checkbox" checked>
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-
-                        <div id="inclusionKeywords" class="keywords-list" aria-live="polite"></div>
-
-                        <div class="add-area">
-                            <input id="customInclusion" class="custom-input" placeholder="Add custom keywords (comma separated)" />
-                            <button id="addInclusion" class="btn add">Add</button>
-                        </div>
-                    </div>
-
-                    <div class="filter-card">
-                        <div class="filter-head">
-                            <div>
-                                <strong>❌ Exclusion Keywords</strong>
-                                <div class="tiny">When enabled, rows containing any of these are removed</div>
-                            </div>
-                            <label class="toggle-switch">
-                                <input id="exclusionToggle" type="checkbox" checked>
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-
-                        <div id="exclusionKeywords" class="keywords-list" aria-live="polite"></div>
-
-                        <div class="add-area">
-                            <input id="customExclusion" class="custom-input" placeholder="Add custom keywords (comma separated)" />
-                            <button id="addExclusion" class="btn add">Add</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="process-area">
-                    <button id="processBtn" class="process-btn" disabled>
-                        <span id="processIcon" style="display:inline-block;width:16px"></span>
-                        <span id="processText">🚀 Process & Filter</span>
-                    </button>
-                    <button id="resetBtn" class="btn" style="background:#fff;border:1px solid #eef2ff;padding:10px 12px;border-radius:10px">Reset Keywords</button>
-                </div>
-            </div>
-
-            <!-- RIGHT -->
-            <div class="right">
-                <div class="block stats">
-                    <div class="stat">
-                        <div class="tiny">Original Rows</div>
-                        <div class="num" id="originalRows">0</div>
-                    </div>
-                    <div class="stat">
-                        <div class="tiny">Filtered Rows</div>
-                        <div class="num" id="filteredRows">0</div>
-                    </div>
-                    <div class="stat">
-                        <div class="tiny">Removed</div>
-                        <div class="num" id="removedRows">0</div>
-                    </div>
-                    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-                        <div class="tiny">Data Kept</div>
-                        <div class="num" id="percentageKept">0%</div>
-                    </div>
-                </div>
-
-                <div class="block preview">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-                        <div><strong>Preview (first 10 rows)</strong></div>
-                        <div class="controls">
-                            <button id="downloadBtn" class="download" style="display:none">⬇️ Download Cleaned CSV</button>
-                        </div>
-                    </div>
-                    <div id="previewTableWrap" style="max-height:420px;overflow:auto">
-                        <table id="previewTable"><tbody></tbody></table>
-                    </div>
-                </div>
-
-                <div class="tiny" style="color:var(--muted)">Design notes: modernized layout, micro-interactions, and instant feedback on keyword and toggle changes. Click tags to remove keywords. Use Reset Keywords to restore defaults.</div>
-            </div>
-        </div>
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1>CSV Data Cleaner</h1>
+        <p class="tiny">Robust CSV parsing + include/exclude filtering — interactive and instant.</p>
+      </div>
+      <div class="tiny">Click a tag to remove it. Clear All clears that side only.</div>
     </div>
+
+    <div class="main">
+      <!-- LEFT -->
+      <div>
+        <div class="block file-area">
+          <label class="btn-file" for="csvFile">📁 Choose CSV file</label>
+          <input id="csvFile" type="file" accept=".csv" />
+          <div id="fileInfo" class="file-info" style="display:none">
+            <div><strong>File:</strong> <span id="fileName"></span></div>
+            <div style="margin-top:6px" class="tiny"><strong>Size:</strong> <span id="fileSize"></span> • <strong>Rows:</strong> <span id="rowCount"></span> • <strong>Columns:</strong> <span id="columnCount"></span></div>
+          </div>
+
+          <div id="colBlock" style="display:none;margin-top:12px">
+            <div class="tiny" style="margin-bottom:6px">Select column to filter</div>
+            <select id="columnSelect" class="col-select"></select>
+          </div>
+        </div>
+
+        <div class="filter-grid">
+          <div class="filter-card">
+            <div class="filter-head">
+              <div>
+                <strong>✅ Inclusion Keywords</strong>
+                <div class="tiny">When enabled, a row must match at least one of these.</div>
+              </div>
+              <label class="toggle-switch">
+                <input id="inclusionToggle" type="checkbox" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div id="inclusionKeywords" class="keywords-list" aria-live="polite"></div>
+
+            <div style="display:flex;gap:8px;margin-top:10px">
+              <input id="customInclusion" class="custom-input" placeholder="Add custom keywords (comma separated)" />
+              <button id="addInclusion" class="btn add">Add</button>
+              <button id="clearInclusion" class="btn clear" title="Remove all inclusion keywords">Clear All</button>
+            </div>
+          </div>
+
+          <div class="filter-card">
+            <div class="filter-head">
+              <div>
+                <strong>❌ Exclusion Keywords</strong>
+                <div class="tiny">When enabled, rows containing any of these are removed.</div>
+              </div>
+              <label class="toggle-switch">
+                <input id="exclusionToggle" type="checkbox" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div id="exclusionKeywords" class="keywords-list" aria-live="polite"></div>
+
+            <div style="display:flex;gap:8px;margin-top:10px">
+              <input id="customExclusion" class="custom-input" placeholder="Add custom keywords (comma separated)" />
+              <button id="addExclusion" class="btn add">Add</button>
+              <button id="clearExclusion" class="btn clear" title="Remove all exclusion keywords">Clear All</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="process-area">
+          <button id="processBtn" class="process-btn" disabled>
+            <span id="processIcon" style="display:inline-block;width:16px"></span>
+            <span id="processText">🚀 Process & Filter</span>
+          </button>
+          <div style="display:flex;gap:8px;align-items:center;margin-left:6px">
+            <button id="resetBtn" class="btn clear">Restore Defaults</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT -->
+      <div class="right">
+        <div class="block stats">
+          <div class="stat">
+            <div class="tiny">Original Rows</div>
+            <div class="num" id="originalRows">0</div>
+          </div>
+          <div class="stat">
+            <div class="tiny">Filtered Rows</div>
+            <div class="num" id="filteredRows">0</div>
+          </div>
+          <div class="stat">
+            <div class="tiny">Removed</div>
+            <div class="num" id="removedRows">0</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+            <div class="tiny">Data Kept</div>
+            <div class="num" id="percentageKept">0%</div>
+          </div>
+        </div>
+
+        <div class="block preview">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <div><strong>Preview (first 10 rows)</strong></div>
+            <div class="controls">
+              <button id="downloadBtn" class="download" style="display:none">⬇️ Download Cleaned CSV</button>
+            </div>
+          </div>
+          <div id="previewTableWrap" style="max-height:420px;overflow:auto">
+            <table id="previewTable"><tbody></tbody></table>
+          </div>
+        </div>
+
+        <div class="tiny" style="color:var(--muted)">Simplified UI, auto-apply on keyword/toggle changes. Use Clear All per side to remove every keyword on that side. Restore Defaults resets both sides.</div>
+      </div>
+    </div>
+  </div>
 
 <script>
 /* -------------------------
    Default keywords (lowercased)
+   Keep core logic intact. We'll only modify keyword lists and UI behaviors.
    ------------------------- */
 let defaultInclusionKeywords = [
+  'architect','asset management','blockchain','capital markets','cbdc','ceo','chief','chief digital officer',
+  'chief innovation officer','chief strategy officer','cio','ciso','co-founder','coo','cpo','crypto','cto',
+  'custody','defi','digital asset','digital banking','digital currency',
+  'digital transformation lead','director','director of digital assets','director of engineering',
+  'executive','fintech','founder','general manager','global head of digital assets','growth lead','head',
+  'head of blockchain and digital assets','head of defi','head of digital','head of digital assets','head of ecosystem',
+  'head of engineering','head of enterprise architecture','head of global payments','head of growth','head of innovation',
+  'head of it','head of payments','head of product','head of product innovation','head of retail payments','head of rwa',
+  'head of stablecoins','head of strategy','head of strategy and innovation','head of tokenization','innovation','lead',
+  'llm','manager','managing','managing director','managing partner','open banking','payment','payments',
+  'platform','president','product','product head','product strategy','rwa','specialist','stablecoin',
+  'strategy','tokenization','transformation','vp','vp of engineering','vp of it','vp of product'
+].map(k => k.toLowerCase());
+
+let defaultExclusionKeywords = [
+  'account executive','accountant','academic','actor','administrative assistant','airdrop','ambassador',
+  'angel','angel investor','analyst','artist','assistant','attorney','audit','auditor','back-end developer','bdr',
+  'business analyst','business development representative','channel','chief of staff','community',
+  'community manager','construction','content','content creator','controller','cpa','customer','customer service representative',
+  'cyber security','data entry','data scientist','degen','devops engineer','doctor','editor','educator','energy','entertainment',
+  'entry-level','epamsystems','event manager','executive assistant','factory','film','finance manager','financial models',
+  'former','freight','front-end developer','gamer','gas','general counsel','giveaway','graphic designer','hardware','hardware engineer',
+  'hospitality','hr','hr manager','human resources','industrial','influencer','intern','inventory','investor relations','junior','journalist',
+  'kol','lawyer','lecturer','legal','legal counsel','logistics','manufacturing','marketer','marketing','marketing manager','marketing specialist',
+  'materials','mechanical engineer','media','memes','memecoin','mining','moderator','music','musician','non-profit','nurse','office manager',
+  'oil','operations manager','paralegal','petroleum','physical','physician','plant manager','podcast','pr','prediction','private banker','producer',
+  'professor','program','project management','promoter','procurement','public relations','qa','quality assurance','real estate','recruiter',
+  'recruitment consultant','researcher','risk','sales','sales consultant','sales representative','scientist','shill','shiller','shipping',
+  'singer','smm','social media','social media manager','software engineer','software test engineer','streamer','supply chain','support agent',
+  'sustainability','tax','teacher','team head','technical lead','technician','telecom','talent acquisition','trenches','transportation','user',
+  'ux researcher','venture partner','warehouse','web developer','writer','yapper','copywriter'
+].map(k => k.toLowerCase());
+
+/* ensure additions (kept earlier) */
+const ensureInclusions = ['ecosystem growth','defi','ecosystem','virtual assets'];
+
+/* Previously requested modifications from prior step:
+   - remove specific inclusion items
+   - additions to inclusion list
+   - remove specific exclusions
+   - add specific exclusions
+   We'll keep those lists here and then build arrays by filtering defaults and merging additions.
+*/
+const removeInclusions = ['data intelligence','developer','engineer','mena','principal','partner','senior'];
+const addInclusions = [
+  'tokenization',
+  'ceo','chief executive officer','founder','co-founder','cofounder','co founder',
+  'coo','cto','cio','cpo','vp of product','head of product','head of engineering','vp of engineering',
+  'vp of it','head of it','director of engineering','ceo and founder','cto and founder','head of ecosystem',
+  'head of defi','defi lead','head of growth','growth lead','ecosystem lead','ceo and co-founder','cto and co-founder'
+].map(s => s.toLowerCase());
+
+const removeExclusions = ['agriculture','treasury'];
+
+/* NEW exclusion additions requested by you in last message */
+const addExclusions = [
+  'designer','business development','cmo','chief marketing officer','marketing',
+  'software engineer','senior software developer','senior software engineer','software dev','senior software dev',
+  'backend dev','frontend dev','solidity dev','smart contracts dev','youtube','igaming',
+  /* newly requested ones */
+  'ios','android','ios dev','android dev','trader','gas',
+  'java','tester','testing','scrum','hr','data science','data analyst','data engineer','data lead','administrator','data admin',
+  'sys admin','system administrator','logistics','ship','supply chain'
+].map(s => s.toLowerCase());
+
+/* Build working arrays */
+let inclusionKeywordsArr = [];
+let exclusionKeywordsArr = [];
+
+function buildKeywordArrays(){
+  // Filter out removed inclusions from defaults
+  defaultInclusionKeywords = defaultInclusionKeywords.filter(k => !removeInclusions.includes(k));
+  // Compose inclusion array
+  inclusionKeywordsArr = Array.from(new Set([...defaultInclusionKeywords, ...ensureInclusions.map(k=>k.toLowerCase()), ...addInclusions]));
+  inclusionKeywordsArr = inclusionKeywordsArr.map(k => String(k).toLowerCase().trim()).filter(Boolean);
+
+  // Filter out removed exclusions
+  defaultExclusionKeywords = defaultExclusionKeywords.filter(k => !removeExclusions.includes(k));
+  // Compose exclusion array
+  exclusionKeywordsArr = Array.from(new Set([...defaultExclusionKeywords, ...addExclusions]));
+  exclusionKeywordsArr = exclusionKeywordsArr.map(k => String(k).toLowerCase().trim()).filter(Boolean);
+}
+
+/* Initialize keyword arrays */
+buildKeywordArrays();
+
+/* CSV holders and UI refs */
+let csvData = []; // array of objects
+let headers = [];
+let processedData = [];
+let fileLoaded = false;
+
+const inclusionContainer = document.getElementById('inclusionKeywords');
+const exclusionContainer = document.getElementById('exclusionKeywords');
+const inclusionToggle = document.getElementById('inclusionToggle');
+const exclusionToggle = document.getElementById('exclusionToggle');
+const customInclusion = document.getElementById('customInclusion');
+const customExclusion = document.getElementById('customExclusion');
+const addInclusionBtn = document.getElementById('addInclusion');
+const addExclusionBtn = document.getElementById('addExclusion');
+const processBtn = document.getElementById('processBtn');
+const processIcon = document.getElementById('processIcon');
+const processText = document.getElementById('processText');
+const downloadBtn = document.getElementById('downloadBtn');
+const previewTable = document.getElementById('previewTable');
+const resetBtn = document.getElementById('resetBtn');
+const clearInclusionBtn = document.getElementById('clearInclusion');
+const clearExclusionBtn = document.getElementById('clearExclusion');
+
+/* Render keywords */
+function renderKeywords(){
+  inclusionContainer.innerHTML = inclusionKeywordsArr.map(k => {
+    const safe = escapeHtml(k);
+    return `<span class="tag" data-type="inclusion" data-key="${safe}">${safe}<span class="remove" title="Remove">&times;</span></span>`;
+  }).join('') || '<span class="tiny" style="color:var(--muted)">No inclusion keywords</span>';
+
+  exclusionContainer.innerHTML = exclusionKeywordsArr.map(k => {
+    const safe = escapeHtml(k);
+    return `<span class="tag ex" data-type="exclusion" data-key="${safe}">${safe}<span class="remove" title="Remove">&times;</span></span>`;
+  }).join('') || '<span class="tiny" style="color:var(--muted)">No exclusion keywords</span>';
+}
+function escapeHtml(str){ return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+/* Tag removal */
+inclusionContainer.addEventListener('click', function(e){
+  const tag = e.target.closest('.tag');
+  if(!tag) return;
+  if(e.target.classList.contains('remove')){
+    const key = tag.getAttribute('data-key');
+    inclusionKeywordsArr = inclusionKeywordsArr.filter(k => k !== key);
+    renderKeywords();
+    if(fileLoaded) autoReprocess();
+  }
+});
+exclusionContainer.addEventListener('click', function(e){
+  const tag = e.target.closest('.tag');
+  if(!tag) return;
+  if(e.target.classList.contains('remove')){
+    const key = tag.getAttribute('data-key');
+    exclusionKeywordsArr = exclusionKeywordsArr.filter(k => k !== key);
+    renderKeywords();
+    if(fileLoaded) autoReprocess();
+  }
+});
+
+/* Add keywords */
+function addKeywordsFromInput(type){
+  const input = type === 'inclusion' ? customInclusion : customExclusion;
+  const raw = input.value || '';
+  const parts = raw.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  if(parts.length === 0) return;
+  if(type === 'inclusion'){
+    inclusionKeywordsArr = Array.from(new Set([...inclusionKeywordsArr, ...parts]));
+  } else {
+    exclusionKeywordsArr = Array.from(new Set([...exclusionKeywordsArr, ...parts]));
+  }
+  input.value = '';
+  renderKeywords();
+  if(fileLoaded) autoReprocess();
+}
+addInclusionBtn.addEventListener('click', ()=>addKeywordsFromInput('inclusion'));
+addExclusionBtn.addEventListener('click', ()=>addKeywordsFromInput('exclusion'));
+
+/* Clear all keywords per side */
+clearInclusionBtn.addEventListener('click', function(){
+  if(!confirm('Clear ALL inclusion keywords? This will remove every inclusion keyword.')) return;
+  inclusionKeywordsArr = [];
+  renderKeywords();
+  if(fileLoaded) autoReprocess();
+});
+clearExclusionBtn.addEventListener('click', function(){
+  if(!confirm('Clear ALL exclusion keywords? This will remove every exclusion keyword.')) return;
+  exclusionKeywordsArr = [];
+  renderKeywords();
+  if(fileLoaded) autoReprocess();
+});
+
+/* Reset to defaults (restore) */
+resetBtn.addEventListener('click', function(){
+  if(!confirm('Restore default keyword lists? This will overwrite any changes.')) return;
+  // Rebuild arrays from original defaults: we reassign the original arrays (recreate defaults)
+  // Rebuild the default lists fresh by re-declaring base lists:
+  defaultInclusionKeywords = [
     'architect','asset management','blockchain','capital markets','cbdc','ceo','chief','chief digital officer',
     'chief innovation officer','chief strategy officer','cio','ciso','co-founder','coo','cpo','crypto','cto',
     'custody','defi','digital asset','digital banking','digital currency',
-    'digital transformation lead','director','director of digital assets','director of engineering','engineer',
+    'digital transformation lead','director','director of digital assets','director of engineering',
     'executive','fintech','founder','general manager','global head of digital assets','growth lead','head',
     'head of blockchain and digital assets','head of defi','head of digital','head of digital assets','head of ecosystem',
     'head of engineering','head of enterprise architecture','head of global payments','head of growth','head of innovation',
@@ -232,9 +401,8 @@ let defaultInclusionKeywords = [
     'llm','manager','managing','managing director','managing partner','open banking','payment','payments',
     'platform','president','product','product head','product strategy','rwa','specialist','stablecoin',
     'strategy','tokenization','transformation','vp','vp of engineering','vp of it','vp of product'
-].map(k => k.toLowerCase());
-
-let defaultExclusionKeywords = [
+  ].map(k => k.toLowerCase());
+  defaultExclusionKeywords = [
     'account executive','accountant','academic','actor','administrative assistant','airdrop','ambassador',
     'angel','angel investor','analyst','artist','assistant','attorney','audit','auditor','back-end developer','bdr',
     'business analyst','business development representative','channel','chief of staff','community',
@@ -251,447 +419,300 @@ let defaultExclusionKeywords = [
     'singer','smm','social media','social media manager','software engineer','software test engineer','streamer','supply chain','support agent',
     'sustainability','tax','teacher','team head','technical lead','technician','telecom','talent acquisition','trenches','transportation','user',
     'ux researcher','venture partner','warehouse','web developer','writer','yapper','copywriter'
-].map(k => k.toLowerCase());
+  ].map(k => k.toLowerCase());
 
-/* Requested ensures previously added (but we'll manage removals later) */
-const ensureInclusions = ['ecosystem growth','defi','ecosystem','virtual assets'];
-
-/* User-requested modifications */
-/* Remove from inclusion: data intelligence, developer, engineer, mena, principal, partner, senior */
-const removeInclusions = ['data intelligence','developer','engineer','mena','principal','partner','senior'];
-
-/* Add to inclusion (roles / variations) */
-const addInclusions = [
-    'tokenization',
-    'ceo','chief executive officer','founder','co-founder','cofounder','cofounder','co founder',
-    'coo','cto','cio','cpo','vp of product','head of product','head of engineering','vp of engineering',
-    'vp of it','head of it','director of engineering','ceo and founder','cto and founder','head of ecosystem',
-    'head of defi','defi lead','head of growth','growth lead','ecosystem lead','ceo and co-founder','cto and co-founder'
-].map(s => s.toLowerCase());
-
-/* Exclusions: remove agriculture, treasury */
-const removeExclusions = ['agriculture','treasury'];
-
-/* Add to exclusion: designer, business development, cmo, chief marketing officer, marketing,
-   software engineer, senior software developer, senior software engineer, software dev, senior software dev,
-   backend dev, frontend dev, solidity dev, smart contracts dev, youtube, igaming
-*/
-const addExclusions = [
-    'designer','business development','cmo','chief marketing officer','marketing',
-    'software engineer','senior software developer','senior software engineer','software dev','senior software dev',
-    'backend dev','frontend dev','solidity dev','smart contracts dev','youtube','igaming'
-].map(s => s.toLowerCase());
-
-/* Merge and prepare working arrays */
-function buildKeywordArrays(){
-    // Start from defaults
-    // Remove requested disallowed tokens from inclusions
-    defaultInclusionKeywords = defaultInclusionKeywords.filter(k => !removeInclusions.includes(k));
-    // Merge includes
-    inclusionKeywordsArr = Array.from(new Set([...defaultInclusionKeywords, ...ensureInclusions.map(k=>k.toLowerCase()), ...addInclusions]));
-
-    // Remove requested from exclusions
-    defaultExclusionKeywords = defaultExclusionKeywords.filter(k => !removeExclusions.includes(k));
-    // Merge excludes
-    exclusionKeywordsArr = Array.from(new Set([...defaultExclusionKeywords, ...addExclusions]));
-
-    // Ensure lowercasing and trim
-    inclusionKeywordsArr = inclusionKeywordsArr.map(k => String(k).toLowerCase().trim()).filter(Boolean);
-    exclusionKeywordsArr = exclusionKeywordsArr.map(k => String(k).toLowerCase().trim()).filter(Boolean);
-}
-
-/* working arrays (mutable) */
-let inclusionKeywordsArr = [];
-let exclusionKeywordsArr = [];
-buildKeywordArrays();
-
-/* CSV data holders */
-let csvData = []; // array of objects
-let headers = []; // array of header names
-let processedData = [];
-let fileLoaded = false;
-
-/* DOM refs */
-const inclusionContainer = document.getElementById('inclusionKeywords');
-const exclusionContainer = document.getElementById('exclusionKeywords');
-const inclusionToggle = document.getElementById('inclusionToggle');
-const exclusionToggle = document.getElementById('exclusionToggle');
-const customInclusion = document.getElementById('customInclusion');
-const customExclusion = document.getElementById('customExclusion');
-const addInclusionBtn = document.getElementById('addInclusion');
-const addExclusionBtn = document.getElementById('addExclusion');
-const processBtn = document.getElementById('processBtn');
-const processIcon = document.getElementById('processIcon');
-const processText = document.getElementById('processText');
-const downloadBtn = document.getElementById('downloadBtn');
-const previewTable = document.getElementById('previewTable');
-const resetBtn = document.getElementById('resetBtn');
-
-/* Render keywords tags */
-function renderKeywords(){
-    inclusionContainer.innerHTML = inclusionKeywordsArr.map(k => {
-        const safe = escapeHtml(k);
-        return `<span class="tag" data-type="inclusion" data-key="${safe}">${safe}<span class="remove" title="Remove">&times;</span></span>`;
-    }).join('') || '<span class="small muted">No inclusion keywords</span>';
-
-    exclusionContainer.innerHTML = exclusionKeywordsArr.map(k => {
-        const safe = escapeHtml(k);
-        return `<span class="tag ex" data-type="exclusion" data-key="${safe}">${safe}<span class="remove" title="Remove">&times;</span></span>`;
-    }).join('') || '<span class="small muted">No exclusion keywords</span>';
-}
-
-/* Helper: escape for attributes/display */
-function escapeHtml(str){
-    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-/* Click-to-remove using event delegation */
-inclusionContainer.addEventListener('click', function(e){
-    const tag = e.target.closest('.tag');
-    if(!tag) return;
-    if(e.target.classList.contains('remove')){
-        const key = tag.getAttribute('data-key');
-        inclusionKeywordsArr = inclusionKeywordsArr.filter(k => k !== key);
-        renderKeywords();
-        if(fileLoaded) autoReprocess();
-    }
-});
-exclusionContainer.addEventListener('click', function(e){
-    const tag = e.target.closest('.tag');
-    if(!tag) return;
-    if(e.target.classList.contains('remove')){
-        const key = tag.getAttribute('data-key');
-        exclusionKeywordsArr = exclusionKeywordsArr.filter(k => k !== key);
-        renderKeywords();
-        if(fileLoaded) autoReprocess();
-    }
+  // rebuild arrays with prior removes/adds as originally intended
+  buildKeywordArrays();
+  renderKeywords();
+  if(fileLoaded) autoReprocess();
 });
 
-/* Add keywords from input */
-function addKeywordsFromInput(type){
-    const input = type === 'inclusion' ? customInclusion : customExclusion;
-    const raw = input.value || '';
-    const parts = raw.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-    if(parts.length === 0) return;
-    if(type === 'inclusion'){
-        inclusionKeywordsArr = Array.from(new Set([...inclusionKeywordsArr, ...parts]));
-    } else {
-        exclusionKeywordsArr = Array.from(new Set([...exclusionKeywordsArr, ...parts]));
-    }
-    input.value = '';
-    renderKeywords();
-    if(fileLoaded) autoReprocess();
-}
-addInclusionBtn.addEventListener('click',()=>addKeywordsFromInput('inclusion'));
-addExclusionBtn.addEventListener('click',()=>addKeywordsFromInput('exclusion'));
-
-/* Reset keywords to defaults */
-resetBtn.addEventListener('click', function(){
-    buildKeywordArrays();
-    renderKeywords();
-    if(fileLoaded) autoReprocess();
-});
-
-/* Toggle changes trigger auto reprocess when file loaded */
+/* Toggle auto-reprocess when changed */
 inclusionToggle.addEventListener('change', ()=>{ if(fileLoaded) autoReprocess(); });
 exclusionToggle.addEventListener('change', ()=>{ if(fileLoaded) autoReprocess(); });
 
 /* -------------------------
-   Robust CSV parser (handles quoted fields with commas & newlines)
+   Robust CSV parser (unchanged core)
    ------------------------- */
 function parseCSV(text){
-    const rows = [];
-    let field = '';
-    let row = [];
-    let inQuotes = false;
-    for(let i=0;i<text.length;i++){
-        const ch = text[i];
-        if(ch === '"'){
-            if(inQuotes && text[i+1] === '"'){
-                field += '"';
-                i++; // skip next quote
-            } else {
-                inQuotes = !inQuotes;
-            }
-        } else if((ch === '\r' || ch === '\n') && !inQuotes){
-            if(ch === '\r' && text[i+1] === '\n'){ i++; }
-            row.push(field);
-            rows.push(row);
-            row = [];
-            field = '';
-        } else if(ch === ',' && !inQuotes){
-            row.push(field);
-            field = '';
-        } else {
-            field += ch;
-        }
-    }
-    // last push
-    row.push(field);
-    rows.push(row);
-
-    // Trim trailing empty rows
-    while(rows.length && rows[rows.length-1].every(c => c === '' || c === null || (typeof c === 'string' && c.trim()===''))){
-        rows.pop();
-    }
-    if(rows.length === 0) return { headers: [], data: [] };
-
-    const hdrs = rows[0].map(h => (h || '').trim());
-    const dataRows = rows.slice(1).map(r => {
-        const obj = {};
-        for(let i=0;i<hdrs.length;i++){
-            const v = r[i] !== undefined && r[i] !== null ? String(r[i]).trim() : '';
-            obj[hdrs[i]] = v;
-        }
-        return obj;
-    });
-
-    return { headers: hdrs, data: dataRows };
-}
-
-/* Convert data -> CSV (proper quoting) */
-function dataToCSV(headersArr, dataArr){
-    const lines = [];
-    const headerLine = headersArr.map(h => {
-        if(String(h).includes(',') || String(h).includes('"') || String(h).includes('\n')) {
-            return `"${String(h).replace(/"/g,'""')}"`;
-        }
-        return h;
-    }).join(',');
-    lines.push(headerLine);
-    for(const row of dataArr){
-        const vals = headersArr.map(h => {
-            const v = row[h] !== undefined && row[h] !== null ? String(row[h]) : '';
-            if(v.includes(',') || v.includes('"') || v.includes('\n')){
-                return `"${v.replace(/"/g,'""')}"`;
-            }
-            return v;
-        });
-        lines.push(vals.join(','));
-    }
-    return lines.join('\n');
-}
-
-/* Keyword matching (both sides are lowercased) */
-function matchesKeywords(text, keywords){
-    if(!text) return false;
-    const lower = String(text).toLowerCase();
-    return keywords.some(k => {
-        if(!k) return false;
-        return lower.includes(k);
-    });
-}
-
-/* Main filter logic */
-function filterData(){
-    const selectedColumn = document.getElementById('columnSelect').value;
-    if(!selectedColumn){
-        alert('Please select a column to filter');
-        return;
-    }
-    const inclusionEnabled = inclusionToggle.checked;
-    const exclusionEnabled = exclusionToggle.checked;
-
-    // Ensure keyword lists are deduped and lowercased
-    const incKeys = inclusionKeywordsArr.map(k => String(k).toLowerCase().trim()).filter(Boolean);
-    const excKeys = exclusionKeywordsArr.map(k => String(k).toLowerCase().trim()).filter(Boolean);
-
-    // Apply filter
-    processedData = csvData.filter(row => {
-        const val = row[selectedColumn] || '';
-
-        // Exclusion first
-        if(exclusionEnabled && excKeys.length > 0 && matchesKeywords(val, excKeys)){
-            return false;
-        }
-
-        // Inclusion: if enabled -> must match one of inclusion keywords
-        if(inclusionEnabled && incKeys.length > 0){
-            return matchesKeywords(val, incKeys);
-        }
-
-        // Otherwise keep
-        return true;
-    });
-
-    updateStats();
-    showPreview();
-}
-
-/* Update stats panel */
-function updateStats(){
-    const original = csvData.length;
-    const filtered = processedData.length;
-    const removed = Math.max(0, original - filtered);
-    const percent = original > 0 ? Math.round((filtered / original) * 100) : 0;
-
-    document.getElementById('originalRows').textContent = original;
-    document.getElementById('filteredRows').textContent = filtered;
-    document.getElementById('removedRows').textContent = removed;
-    document.getElementById('percentageKept').textContent = percent + '%';
-}
-
-/* Render preview (first 10 rows) */
-function showPreview(){
-    const table = document.getElementById('previewTable');
-    table.innerHTML = '';
-    const tbody = document.createElement('tbody');
-
-    if(!processedData || processedData.length === 0){
-        const tr = document.createElement('tr');
-        const td = document.createElement('td');
-        td.textContent = 'No data matches the filter criteria';
-        td.style.padding = '12px';
-        tr.appendChild(td);
-        tbody.appendChild(tr);
-        table.appendChild(tbody);
-        return;
-    }
-
-    // header row
-    const theadTr = document.createElement('tr');
-    headers.forEach(h => {
-        const th = document.createElement('th');
-        th.textContent = h;
-        theadTr.appendChild(th);
-    });
-    tbody.appendChild(theadTr);
-
-    const preview = processedData.slice(0,10);
-    preview.forEach(r => {
-        const tr = document.createElement('tr');
-        headers.forEach(h => {
-            const td = document.createElement('td');
-            td.textContent = r[h] || '';
-            tr.appendChild(td);
-        });
-        tbody.appendChild(tr);
-    });
-
-    table.appendChild(tbody);
-}
-
-/* File input handling */
-document.getElementById('csvFile').addEventListener('change', function(e){
-    const file = e.target.files[0];
-    if(!file) return;
-    if(file.size > 50 * 1024 * 1024){
-        alert('File size exceeds 50MB limit');
-        e.target.value = '';
-        return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = function(ev){
-        const text = ev.target.result;
-        const parsed = parseCSV(text);
-
-        csvData = parsed.data;
-        headers = parsed.headers;
-
-        document.getElementById('fileName').textContent = file.name;
-        document.getElementById('fileSize').textContent = (file.size / 1024).toFixed(2) + ' KB';
-        document.getElementById('rowCount').textContent = csvData.length;
-        document.getElementById('columnCount').textContent = headers.length;
-        document.getElementById('fileInfo').style.display = 'block';
-
-        // populate column selector
-        const colSelect = document.getElementById('columnSelect');
-        colSelect.innerHTML = '<option value="">Select a column...</option>';
-        headers.forEach(h => {
-            const opt = document.createElement('option');
-            opt.value = h;
-            opt.textContent = h;
-            if(h.toLowerCase().includes('job') || h.toLowerCase().includes('title')) opt.selected = true;
-            colSelect.appendChild(opt);
-        });
-
-        document.getElementById('colBlock').style.display = 'block';
-        processBtn.disabled = false;
-        fileLoaded = true;
-
-        // clear previous preview/stats
-        processedData = [];
-        updateStats();
-        document.getElementById('previewTable').innerHTML = '';
-        downloadBtn.style.display = 'none';
-
-        // render current keywords and run initial process (auto)
-        renderKeywords();
-        autoReprocess();
-    };
-    reader.readAsText(file);
-});
-
-/* Process button visual + action */
-function setProcessingState(isProcessing){
-    if(isProcessing){
-        processBtn.disabled = true;
-        processIcon.innerHTML = '<span class="spinner"></span>';
-        processText.textContent = 'Processing...';
+  const rows = [];
+  let field = '';
+  let row = [];
+  let inQuotes = false;
+  for(let i=0;i<text.length;i++){
+    const ch = text[i];
+    if(ch === '"'){
+      if(inQuotes && text[i+1] === '"'){
+        field += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if((ch === '\r' || ch === '\n') && !inQuotes){
+      if(ch === '\r' && text[i+1] === '\n'){ i++; }
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = '';
+    } else if(ch === ',' && !inQuotes){
+      row.push(field);
+      field = '';
     } else {
-        processBtn.disabled = false;
-        processIcon.innerHTML = '';
-        processText.textContent = '🚀 Process & Filter';
+      field += ch;
     }
+  }
+  row.push(field);
+  rows.push(row);
+
+  while(rows.length && rows[rows.length-1].every(c => c === '' || c === null || (typeof c === 'string' && c.trim()===''))){
+    rows.pop();
+  }
+  if(rows.length === 0) return { headers: [], data: [] };
+
+  const hdrs = rows[0].map(h => (h || '').trim());
+  const dataRows = rows.slice(1).map(r => {
+    const obj = {};
+    for(let i=0;i<hdrs.length;i++){
+      const v = r[i] !== undefined && r[i] !== null ? String(r[i]).trim() : '';
+      obj[hdrs[i]] = v;
+    }
+    return obj;
+  });
+
+  return { headers: hdrs, data: dataRows };
 }
 
-/* Process click */
-processBtn.addEventListener('click', function(){
-    // provide visual feedback
-    setProcessingState(true);
-    // small timeout so spinner is visible even for fast runs
-    setTimeout(()=>{
-        try {
-            filterData();
-            downloadBtn.style.display = processedData && processedData.length ? 'inline-block' : 'none';
-        } catch(err){
-            console.error(err);
-            alert('Error during processing: ' + String(err.message || err));
-        } finally {
-            setProcessingState(false);
-        }
-    }, 160);
+/* Convert data -> CSV (unchanged) */
+function dataToCSV(headersArr, dataArr){
+  const lines = [];
+  const headerLine = headersArr.map(h => {
+    if(String(h).includes(',') || String(h).includes('"') || String(h).includes('\n')) {
+      return `"${String(h).replace(/"/g,'""')}"`;
+    }
+    return h;
+  }).join(',');
+  lines.push(headerLine);
+  for(const row of dataArr){
+    const vals = headersArr.map(h => {
+      const v = row[h] !== undefined && row[h] !== null ? String(row[h]) : '';
+      if(v.includes(',') || v.includes('"') || v.includes('\n')){
+        return `"${v.replace(/"/g,'""')}"`;
+      }
+      return v;
+    });
+    lines.push(vals.join(','));
+  }
+  return lines.join('\n');
+}
+
+/* matchesKeywords unchanged (substring matching, lowercase) */
+function matchesKeywords(text, keywords){
+  if(!text) return false;
+  const lower = String(text).toLowerCase();
+  return keywords.some(k => {
+    if(!k) return false;
+    return lower.includes(k);
+  });
+}
+
+/* Main filter logic (unchanged) */
+function filterData(){
+  const selectedColumn = document.getElementById('columnSelect').value;
+  if(!selectedColumn){
+    alert('Please select a column to filter');
+    return;
+  }
+  const inclusionEnabled = inclusionToggle.checked;
+  const exclusionEnabled = exclusionToggle.checked;
+
+  const incKeys = inclusionKeywordsArr.map(k => String(k).toLowerCase().trim()).filter(Boolean);
+  const excKeys = exclusionKeywordsArr.map(k => String(k).toLowerCase().trim()).filter(Boolean);
+
+  processedData = csvData.filter(row => {
+    const val = row[selectedColumn] || '';
+
+    if(exclusionEnabled && excKeys.length > 0 && matchesKeywords(val, excKeys)){
+      return false;
+    }
+
+    if(inclusionEnabled && incKeys.length > 0){
+      return matchesKeywords(val, incKeys);
+    }
+
+    return true;
+  });
+
+  updateStats();
+  showPreview();
+}
+
+/* Update stats */
+function updateStats(){
+  const original = csvData.length;
+  const filtered = processedData.length;
+  const removed = Math.max(0, original - filtered);
+  const percent = original > 0 ? Math.round((filtered / original) * 100) : 0;
+
+  document.getElementById('originalRows').textContent = original;
+  document.getElementById('filteredRows').textContent = filtered;
+  document.getElementById('removedRows').textContent = removed;
+  document.getElementById('percentageKept').textContent = percent + '%';
+}
+
+/* Show preview (unchanged) */
+function showPreview(){
+  const table = document.getElementById('previewTable');
+  table.innerHTML = '';
+  const tbody = document.createElement('tbody');
+
+  if(!processedData || processedData.length === 0){
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.textContent = 'No data matches the filter criteria';
+    td.style.padding = '12px';
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+    table.appendChild(tbody);
+    return;
+  }
+
+  const theadTr = document.createElement('tr');
+  headers.forEach(h => {
+    const th = document.createElement('th');
+    th.textContent = h;
+    theadTr.appendChild(th);
+  });
+  tbody.appendChild(theadTr);
+
+  const preview = processedData.slice(0,10);
+  preview.forEach(r => {
+    const tr = document.createElement('tr');
+    headers.forEach(h => {
+      const td = document.createElement('td');
+      td.textContent = r[h] || '';
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+
+  table.appendChild(tbody);
+}
+
+/* File input handling (unchanged core) */
+document.getElementById('csvFile').addEventListener('change', function(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  if(file.size > 50 * 1024 * 1024){
+    alert('File size exceeds 50MB limit');
+    e.target.value = '';
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    const text = ev.target.result;
+    const parsed = parseCSV(text);
+
+    csvData = parsed.data;
+    headers = parsed.headers;
+
+    document.getElementById('fileName').textContent = file.name;
+    document.getElementById('fileSize').textContent = (file.size / 1024).toFixed(2) + ' KB';
+    document.getElementById('rowCount').textContent = csvData.length;
+    document.getElementById('columnCount').textContent = headers.length;
+    document.getElementById('fileInfo').style.display = 'block';
+
+    const colSelect = document.getElementById('columnSelect');
+    colSelect.innerHTML = '<option value="">Select a column...</option>';
+    headers.forEach(h => {
+      const opt = document.createElement('option');
+      opt.value = h;
+      opt.textContent = h;
+      if(h.toLowerCase().includes('job') || h.toLowerCase().includes('title')) opt.selected = true;
+      colSelect.appendChild(opt);
+    });
+
+    document.getElementById('colBlock').style.display = 'block';
+    processBtn.disabled = false;
+    fileLoaded = true;
+
+    processedData = [];
+    updateStats();
+    document.getElementById('previewTable').innerHTML = '';
+    downloadBtn.style.display = 'none';
+
+    renderKeywords();
+    autoReprocess();
+  };
+  reader.readAsText(file);
 });
 
-/* Auto reprocess helper (when toggles/keywords change) */
-function autoReprocess(){
-    if(!fileLoaded) return;
-    // run the same visual flow but shorter
-    setProcessingState(true);
-    setTimeout(()=>{
-        try{
-            filterData();
-            downloadBtn.style.display = processedData && processedData.length ? 'inline-block' : 'none';
-        } catch(e){
-            console.error(e);
-        } finally {
-            setProcessingState(false);
-        }
-    }, 140);
+/* Processing UI */
+function setProcessingState(isProcessing){
+  if(isProcessing){
+    processBtn.disabled = true;
+    processIcon.innerHTML = '<span class="spinner"></span>';
+    processText.textContent = 'Processing...';
+  } else {
+    processBtn.disabled = false;
+    processIcon.innerHTML = '';
+    processText.textContent = '🚀 Process & Filter';
+  }
 }
 
-/* Download cleaned CSV */
-downloadBtn.addEventListener('click', function(){
-    if(!processedData || !processedData.length){
-        alert('No data to download');
-        return;
+/* Process click (keeps core behavior) */
+processBtn.addEventListener('click', function(){
+  setProcessingState(true);
+  setTimeout(()=>{
+    try {
+      filterData();
+      downloadBtn.style.display = processedData && processedData.length ? 'inline-block' : 'none';
+    } catch(err){
+      console.error(err);
+      alert('Error during processing: ' + String(err.message || err));
+    } finally {
+      setProcessingState(false);
     }
-    const csv = dataToCSV(headers, processedData);
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'cleaned_data.csv';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+  }, 160);
+});
+
+/* Auto reprocess when changes happen */
+function autoReprocess(){
+  if(!fileLoaded) return;
+  setProcessingState(true);
+  setTimeout(()=>{
+    try{
+      filterData();
+      downloadBtn.style.display = processedData && processedData.length ? 'inline-block' : 'none';
+    } catch(e){
+      console.error(e);
+    } finally {
+      setProcessingState(false);
+    }
+  }, 120);
+}
+
+/* Download cleaned CSV (unchanged) */
+downloadBtn.addEventListener('click', function(){
+  if(!processedData || !processedData.length){
+    alert('No data to download');
+    return;
+  }
+  const csv = dataToCSV(headers, processedData);
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'cleaned_data.csv';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 });
 
 /* init */
 function init(){
-    renderKeywords();
+  renderKeywords();
 }
 init();
 </script>
