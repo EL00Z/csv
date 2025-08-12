@@ -9,7 +9,7 @@
       --bg:#f6f7fb;
       --card:#ffffff;
       --muted:#6b7280;
-      --accent:#2563eb; /* simpler single accent */
+      --accent:#2563eb;
       --accent-2:#7c3aed;
       --danger:#ef4444;
       --success:#10b981;
@@ -23,7 +23,9 @@
     .container{max-width:1180px;margin:0 auto;border-radius:12px;background:var(--card);box-shadow:0 10px 30px rgba(2,6,23,0.06);overflow:hidden;}
     .header{padding:20px 22px;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:white;display:flex;align-items:center;justify-content:space-between}
     .header h1{font-size:18px;margin:0}
-    .header p{margin:0;opacity:0.95;font-size:13px}
+    /* make header descriptive text white so it's visible */
+    .header p{margin:0;opacity:0.95;font-size:13px;color:rgba(255,255,255,0.95)}
+    .header .tiny{color:rgba(255,255,255,0.95)} /* ensure tip text in header is white */
     .main{display:grid;grid-template-columns:1fr 380px;gap:20px;padding:18px}
     @media (max-width:980px){ .main{grid-template-columns:1fr;padding:12px} }
 
@@ -203,7 +205,6 @@
 <script>
 /* -------------------------
    Default keywords (lowercased)
-   Keep core logic intact. We'll only modify keyword lists and UI behaviors.
    ------------------------- */
 let defaultInclusionKeywords = [
   'architect','asset management','blockchain','capital markets','cbdc','ceo','chief','chief digital officer',
@@ -239,61 +240,60 @@ let defaultExclusionKeywords = [
   'ux researcher','venture partner','warehouse','web developer','writer','yapper','copywriter'
 ].map(k => k.toLowerCase());
 
-/* ensure additions (kept earlier) */
+/* ensure additions */
 const ensureInclusions = ['ecosystem growth','defi','ecosystem','virtual assets'];
 
-/* Previously requested modifications from prior step:
-   - remove specific inclusion items
-   - additions to inclusion list
-   - remove specific exclusions
-   - add specific exclusions
-   We'll keep those lists here and then build arrays by filtering defaults and merging additions.
-*/
-const removeInclusions = ['data intelligence','developer','engineer','mena','principal','partner','senior'];
+/* Removals requested (final): remove architect, asset management, capital markets, head of enterprise architecture, llm, manager */
+const removeInclusions = ['architect','asset management','capital markets','head of enterprise architecture','llm','manager'];
+
+/* Additions requested */
 const addInclusions = [
-  'tokenization',
-  'ceo','chief executive officer','founder','co-founder','cofounder','co founder',
-  'coo','cto','cio','cpo','vp of product','head of product','head of engineering','vp of engineering',
-  'vp of it','head of it','director of engineering','ceo and founder','cto and founder','head of ecosystem',
-  'head of defi','defi lead','head of growth','growth lead','ecosystem lead','ceo and co-founder','cto and co-founder'
+  'co-founder','director','cpo','web3','fintech','crypto','dlt','stablecoins','chief product officer','cto',
+  'chief technology officer','digital','transformation','strategy'
 ].map(s => s.toLowerCase());
 
+/* Exclusion removals (kept from before) */
 const removeExclusions = ['agriculture','treasury'];
 
-/* NEW exclusion additions requested by you in last message */
+/* Exclusion additions (previous + newly added ones kept) */
 const addExclusions = [
   'designer','business development','cmo','chief marketing officer','marketing',
   'software engineer','senior software developer','senior software engineer','software dev','senior software dev',
   'backend dev','frontend dev','solidity dev','smart contracts dev','youtube','igaming',
-  /* newly requested ones */
   'ios','android','ios dev','android dev','trader','gas',
   'java','tester','testing','scrum','hr','data science','data analyst','data engineer','data lead','administrator','data admin',
   'sys admin','system administrator','logistics','ship','supply chain'
 ].map(s => s.toLowerCase());
 
-/* Build working arrays */
+/* Build keyword arrays */
 let inclusionKeywordsArr = [];
 let exclusionKeywordsArr = [];
 
 function buildKeywordArrays(){
-  // Filter out removed inclusions from defaults
+  // Apply removals on defaults
   defaultInclusionKeywords = defaultInclusionKeywords.filter(k => !removeInclusions.includes(k));
-  // Compose inclusion array
-  inclusionKeywordsArr = Array.from(new Set([...defaultInclusionKeywords, ...ensureInclusions.map(k=>k.toLowerCase()), ...addInclusions]));
+  // Combine inclusions
+  inclusionKeywordsArr = Array.from(new Set([
+    ...defaultInclusionKeywords,
+    ...ensureInclusions.map(k=>k.toLowerCase()),
+    ...addInclusions
+  ]));
   inclusionKeywordsArr = inclusionKeywordsArr.map(k => String(k).toLowerCase().trim()).filter(Boolean);
 
-  // Filter out removed exclusions
+  // Exclusions
   defaultExclusionKeywords = defaultExclusionKeywords.filter(k => !removeExclusions.includes(k));
-  // Compose exclusion array
-  exclusionKeywordsArr = Array.from(new Set([...defaultExclusionKeywords, ...addExclusions]));
+  exclusionKeywordsArr = Array.from(new Set([
+    ...defaultExclusionKeywords,
+    ...addExclusions
+  ]));
   exclusionKeywordsArr = exclusionKeywordsArr.map(k => String(k).toLowerCase().trim()).filter(Boolean);
 }
 
-/* Initialize keyword arrays */
+/* initialize */
 buildKeywordArrays();
 
-/* CSV holders and UI refs */
-let csvData = []; // array of objects
+/* CSV holders & UI refs */
+let csvData = [];
 let headers = [];
 let processedData = [];
 let fileLoaded = false;
@@ -369,7 +369,7 @@ function addKeywordsFromInput(type){
 addInclusionBtn.addEventListener('click', ()=>addKeywordsFromInput('inclusion'));
 addExclusionBtn.addEventListener('click', ()=>addKeywordsFromInput('exclusion'));
 
-/* Clear all keywords per side */
+/* Clear all per side */
 clearInclusionBtn.addEventListener('click', function(){
   if(!confirm('Clear ALL inclusion keywords? This will remove every inclusion keyword.')) return;
   inclusionKeywordsArr = [];
@@ -383,11 +383,10 @@ clearExclusionBtn.addEventListener('click', function(){
   if(fileLoaded) autoReprocess();
 });
 
-/* Reset to defaults (restore) */
+/* Reset to defaults */
 resetBtn.addEventListener('click', function(){
   if(!confirm('Restore default keyword lists? This will overwrite any changes.')) return;
-  // Rebuild arrays from original defaults: we reassign the original arrays (recreate defaults)
-  // Rebuild the default lists fresh by re-declaring base lists:
+  // rebuild base lists and arrays
   defaultInclusionKeywords = [
     'architect','asset management','blockchain','capital markets','cbdc','ceo','chief','chief digital officer',
     'chief innovation officer','chief strategy officer','cio','ciso','co-founder','coo','cpo','crypto','cto',
@@ -421,13 +420,13 @@ resetBtn.addEventListener('click', function(){
     'ux researcher','venture partner','warehouse','web developer','writer','yapper','copywriter'
   ].map(k => k.toLowerCase());
 
-  // rebuild arrays with prior removes/adds as originally intended
+  // rebuild based on final requested removals/additions
   buildKeywordArrays();
   renderKeywords();
   if(fileLoaded) autoReprocess();
 });
 
-/* Toggle auto-reprocess when changed */
+/* Toggle auto-reprocess */
 inclusionToggle.addEventListener('change', ()=>{ if(fileLoaded) autoReprocess(); });
 exclusionToggle.addEventListener('change', ()=>{ if(fileLoaded) autoReprocess(); });
 
@@ -505,7 +504,7 @@ function dataToCSV(headersArr, dataArr){
   return lines.join('\n');
 }
 
-/* matchesKeywords unchanged (substring matching, lowercase) */
+/* matchesKeywords unchanged */
 function matchesKeywords(text, keywords){
   if(!text) return false;
   const lower = String(text).toLowerCase();
@@ -559,7 +558,7 @@ function updateStats(){
   document.getElementById('percentageKept').textContent = percent + '%';
 }
 
-/* Show preview (unchanged) */
+/* Show preview */
 function showPreview(){
   const table = document.getElementById('previewTable');
   table.innerHTML = '';
@@ -598,7 +597,7 @@ function showPreview(){
   table.appendChild(tbody);
 }
 
-/* File input handling (unchanged core) */
+/* File input handling (unchanged) */
 document.getElementById('csvFile').addEventListener('change', function(e){
   const file = e.target.files[0];
   if(!file) return;
@@ -660,7 +659,7 @@ function setProcessingState(isProcessing){
   }
 }
 
-/* Process click (keeps core behavior) */
+/* Process click */
 processBtn.addEventListener('click', function(){
   setProcessingState(true);
   setTimeout(()=>{
@@ -676,7 +675,7 @@ processBtn.addEventListener('click', function(){
   }, 160);
 });
 
-/* Auto reprocess when changes happen */
+/* Auto reprocess */
 function autoReprocess(){
   if(!fileLoaded) return;
   setProcessingState(true);
@@ -692,7 +691,7 @@ function autoReprocess(){
   }, 120);
 }
 
-/* Download cleaned CSV (unchanged) */
+/* Download cleaned CSV */
 downloadBtn.addEventListener('click', function(){
   if(!processedData || !processedData.length){
     alert('No data to download');
