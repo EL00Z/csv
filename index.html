@@ -256,13 +256,17 @@ const addInclusions = [
 const removeExclusions = ['agriculture','treasury'];
 
 /* Exclusion additions (previous + newly added ones kept) */
+/* Added the requested set of UI/UX-related and other keywords per your last message */
 const addExclusions = [
   'designer','business development','cmo','chief marketing officer','marketing',
   'software engineer','senior software developer','senior software engineer','software dev','senior software dev',
   'backend dev','frontend dev','solidity dev','smart contracts dev','youtube','igaming',
   'ios','android','ios dev','android dev','trader','gas',
   'java','tester','testing','scrum','hr','data science','data analyst','data engineer','data lead','administrator','data admin',
-  'sys admin','system administrator','logistics','ship','supply chain'
+  'sys admin','system administrator','logistics','ship','supply chain',
+  /* additions explicitly requested to be re-added */
+  'ux','ui/ux','ux/ui','broker','creative','art director','director of art','designer','gaming',
+  'ui and ux','ux and ui','ui & ux','ux & ui','ui&ux','ux&ui'
 ].map(s => s.toLowerCase());
 
 /* Build keyword arrays */
