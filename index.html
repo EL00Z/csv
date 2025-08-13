@@ -303,6 +303,7 @@ let csvData = [];
 let headers = [];
 let processedData = [];
 let fileLoaded = false;
+let originalFileName = '';
 
 const inclusionContainer = document.getElementById('inclusionKeywords');
 const exclusionContainer = document.getElementById('exclusionKeywords');
@@ -627,6 +628,9 @@ document.getElementById('csvFile').addEventListener('change', function(e){
     document.getElementById('columnCount').textContent = headers.length;
     document.getElementById('fileInfo').style.display = 'block';
 
+    // store original filename for output naming
+    originalFileName = file.name || '';
+
     const colSelect = document.getElementById('columnSelect');
     colSelect.innerHTML = '<option value="">Select a column...</option>';
     headers.forEach(h => {
@@ -697,7 +701,7 @@ function autoReprocess(){
   }, 120);
 }
 
-/* Download cleaned CSV */
+/* Download cleaned CSV - filename uses original name with _cleaned appended before extension */
 downloadBtn.addEventListener('click', function(){
   if(!processedData || !processedData.length){
     alert('No data to download');
@@ -708,7 +712,21 @@ downloadBtn.addEventListener('click', function(){
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'cleaned_data.csv';
+
+  // build filename: originalName -> originalName_cleaned.ext
+  let outName = 'cleaned_data.csv';
+  if(originalFileName && typeof originalFileName === 'string'){
+    const idx = originalFileName.lastIndexOf('.');
+    if(idx === -1){
+      outName = originalFileName + '_cleaned.csv';
+    } else {
+      const base = originalFileName.slice(0, idx);
+      const ext = originalFileName.slice(idx);
+      outName = base + '_cleaned' + ext;
+    }
+  }
+  a.download = outName;
+
   document.body.appendChild(a);
   a.click();
   a.remove();
