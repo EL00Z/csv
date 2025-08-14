@@ -93,7 +93,6 @@
     </div>
 
     <div class="main">
-      <!-- LEFT -->
       <div>
         <div class="block file-area">
           <label class="btn-file" for="csvFile">📁 Choose CSV file</label>
@@ -164,7 +163,6 @@
         </div>
       </div>
 
-      <!-- RIGHT -->
       <div class="right">
         <div class="block stats">
           <div class="stat">
@@ -204,9 +202,9 @@
 
 <script>
 /* -------------------------
-   Default keywords (lowercased)
+   MASTER DEFAULT KEYWORD LISTS (DO NOT MODIFY)
    ------------------------- */
-let defaultInclusionKeywords = [
+const MASTER_DEFAULT_INCLUSIONS = [
   'architect','asset management','blockchain','capital markets','cbdc','ceo','chief','chief digital officer',
   'chief innovation officer','chief strategy officer','cio','ciso','co-founder','coo','cpo','crypto','cto',
   'custody','defi','digital asset','digital banking','digital currency',
@@ -219,9 +217,9 @@ let defaultInclusionKeywords = [
   'llm','manager','managing','managing director','managing partner','open banking','payment','payments',
   'platform','president','product','product head','product strategy','rwa','specialist','stablecoin',
   'strategy','tokenization','transformation','vp','vp of engineering','vp of it','vp of product'
-].map(k => k.toLowerCase());
+];
 
-let defaultExclusionKeywords = [
+const MASTER_DEFAULT_EXCLUSIONS = [
   'account executive','accountant','academic','actor','administrative assistant','airdrop','ambassador',
   'angel','angel investor','analyst','artist','assistant','attorney','audit','auditor','back-end developer','bdr',
   'business analyst','business development representative','channel','chief of staff','community',
@@ -238,7 +236,13 @@ let defaultExclusionKeywords = [
   'singer','smm','social media','social media manager','software engineer','software test engineer','streamer','supply chain','support agent',
   'sustainability','tax','teacher','team head','technical lead','technician','telecom','talent acquisition','trenches','transportation','user',
   'ux researcher','venture partner','warehouse','web developer','writer','yapper','copywriter'
-].map(k => k.toLowerCase());
+];
+
+/* -------------------------
+   MODIFICATIONS TO DEFAULTS (APPLIED ON LOAD & RESET)
+   ------------------------- */
+let defaultInclusionKeywords = MASTER_DEFAULT_INCLUSIONS.map(k => k.toLowerCase());
+let defaultExclusionKeywords = MASTER_DEFAULT_EXCLUSIONS.map(k => k.toLowerCase());
 
 /* ensure additions */
 const ensureInclusions = ['ecosystem growth','defi','ecosystem','virtual assets'];
@@ -249,14 +253,15 @@ const removeInclusions = ['architect','asset management','capital markets','head
 /* Additions requested */
 const addInclusions = [
   'co-founder','director','cpo','web3','fintech','crypto','dlt','stablecoins','chief product officer','cto',
-  'chief technology officer','digital','transformation','strategy'
+  'chief technology officer','digital','transformation','strategy',
+  /* NEWLY ADDED */
+  'chief digital officer'
 ].map(s => s.toLowerCase());
 
 /* Exclusion removals (kept from before) */
 const removeExclusions = ['agriculture','treasury','pr'];
 
 /* Exclusion additions (previous + newly added ones kept) */
-/* Added the requested set of UI/UX-related and other keywords per your last message */
 const addExclusions = [
   'designer','business development','cmo','chief marketing officer','marketing',
   'software engineer','senior software developer','senior software engineer','software dev','senior software dev',
@@ -264,11 +269,11 @@ const addExclusions = [
   'ios','android','ios dev','android dev','trader','gas',
   'java','tester','testing','scrum','hr','data science','data analyst','data engineer','data lead','administrator','data admin',
   'sys admin','system administrator','logistics','ship','supply chain',
-  /* additions explicitly requested to be re-added */
   'ux','ui/ux','ux/ui','broker','creative','art director','director of art','designer','gaming',
   'ui and ux','ux and ui','ui & ux','ux & ui','ui&ux','ux&ui',
-  /* newly requested exclusions */
-  'talent','acquiring','bd','pr manager','pr director','acquisition','hotel','travel','accounting','regulat','senator','backend','gambling','petrol','politic','staff','photograph','photo','video'
+  'talent','acquiring','bd','pr manager','pr director','acquisition','hotel','travel','accounting','regulat','senator','backend','gambling','petrol','politic','staff','photograph','photo','video',
+  /* NEWLY ADDED */
+  'loan','esg','climate','meme','trading','program manager','program director','portfolio manag','head of people','client service','customer service'
 ].map(s => s.toLowerCase());
 
 /* Build keyword arrays */
@@ -277,19 +282,19 @@ let exclusionKeywordsArr = [];
 
 function buildKeywordArrays(){
   // Apply removals on defaults
-  defaultInclusionKeywords = defaultInclusionKeywords.filter(k => !removeInclusions.includes(k));
+  let tempInclusions = defaultInclusionKeywords.filter(k => !removeInclusions.includes(k));
   // Combine inclusions
   inclusionKeywordsArr = Array.from(new Set([
-    ...defaultInclusionKeywords,
+    ...tempInclusions,
     ...ensureInclusions.map(k=>k.toLowerCase()),
     ...addInclusions
   ]));
   inclusionKeywordsArr = inclusionKeywordsArr.map(k => String(k).toLowerCase().trim()).filter(Boolean);
 
   // Exclusions
-  defaultExclusionKeywords = defaultExclusionKeywords.filter(k => !removeExclusions.includes(k));
+  let tempExclusions = defaultExclusionKeywords.filter(k => !removeExclusions.includes(k));
   exclusionKeywordsArr = Array.from(new Set([
-    ...defaultExclusionKeywords,
+    ...tempExclusions,
     ...addExclusions
   ]));
   exclusionKeywordsArr = exclusionKeywordsArr.map(k => String(k).toLowerCase().trim()).filter(Boolean);
@@ -393,41 +398,11 @@ clearExclusionBtn.addEventListener('click', function(){
 /* Reset to defaults */
 resetBtn.addEventListener('click', function(){
   if(!confirm('Restore default keyword lists? This will overwrite any changes.')) return;
-  // rebuild base lists and arrays
-  defaultInclusionKeywords = [
-    'architect','asset management','blockchain','capital markets','cbdc','ceo','chief','chief digital officer',
-    'chief innovation officer','chief strategy officer','cio','ciso','co-founder','coo','cpo','crypto','cto',
-    'custody','defi','digital asset','digital banking','digital currency',
-    'digital transformation lead','director','director of digital assets','director of engineering',
-    'executive','fintech','founder','general manager','global head of digital assets','growth lead','head',
-    'head of blockchain and digital assets','head of defi','head of digital','head of digital assets','head of ecosystem',
-    'head of engineering','head of enterprise architecture','head of global payments','head of growth','head of innovation',
-    'head of it','head of payments','head of product','head of product innovation','head of retail payments','head of rwa',
-    'head of stablecoins','head of strategy','head of strategy and innovation','head of tokenization','innovation','lead',
-    'llm','manager','managing','managing director','managing partner','open banking','payment','payments',
-    'platform','president','product','product head','product strategy','rwa','specialist','stablecoin',
-    'strategy','tokenization','transformation','vp','vp of engineering','vp of it','vp of product'
-  ].map(k => k.toLowerCase());
-  defaultExclusionKeywords = [
-    'account executive','accountant','academic','actor','administrative assistant','airdrop','ambassador',
-    'angel','angel investor','analyst','artist','assistant','attorney','audit','auditor','back-end developer','bdr',
-    'business analyst','business development representative','channel','chief of staff','community',
-    'community manager','construction','content','content creator','controller','cpa','customer','customer service representative',
-    'cyber security','data entry','data scientist','degen','devops engineer','doctor','editor','educator','energy','entertainment',
-    'entry-level','epamsystems','event manager','executive assistant','factory','film','finance manager','financial models',
-    'former','freight','front-end developer','gamer','gas','general counsel','giveaway','graphic designer','hardware','hardware engineer',
-    'hospitality','hr','hr manager','human resources','industrial','influencer','intern','inventory','investor relations','junior','journalist',
-    'kol','lawyer','lecturer','legal','legal counsel','logistics','manufacturing','marketer','marketing','marketing manager','marketing specialist',
-    'materials','mechanical engineer','media','memes','memecoin','mining','moderator','music','musician','non-profit','nurse','office manager',
-    'oil','operations manager','paralegal','petroleum','physical','physician','plant manager','podcast','pr','prediction','private banker','producer',
-    'professor','program','project management','promoter','procurement','public relations','qa','quality assurance','real estate','recruiter',
-    'recruitment consultant','researcher','risk','sales','sales consultant','sales representative','scientist','shill','shiller','shipping',
-    'singer','smm','social media','social media manager','software engineer','software test engineer','streamer','supply chain','support agent',
-    'sustainability','tax','teacher','team head','technical lead','technician','telecom','talent acquisition','trenches','transportation','user',
-    'ux researcher','venture partner','warehouse','web developer','writer','yapper','copywriter'
-  ].map(k => k.toLowerCase());
+  // Restore mutable defaults from the master constants
+  defaultInclusionKeywords = MASTER_DEFAULT_INCLUSIONS.map(k => k.toLowerCase());
+  defaultExclusionKeywords = MASTER_DEFAULT_EXCLUSIONS.map(k => k.toLowerCase());
 
-  // rebuild based on final requested removals/additions
+  // Rebuild keyword arrays based on the restored defaults plus any coded modifications
   buildKeywordArrays();
   renderKeywords();
   if(fileLoaded) autoReprocess();
