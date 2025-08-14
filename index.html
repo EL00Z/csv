@@ -3,7 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>CSV Data Cleaner — Smart Filter</title>
+  <title>Bulk CSV Data Cleaner — Smart Filter</title>
+  <!-- Include JSZip library for creating zip files -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
     :root{
       --bg:#f6f7fb;
@@ -23,9 +25,8 @@
     .container{max-width:1180px;margin:0 auto;border-radius:12px;background:var(--card);box-shadow:0 10px 30px rgba(2,6,23,0.06);overflow:hidden;}
     .header{padding:20px 22px;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:white;display:flex;align-items:center;justify-content:space-between}
     .header h1{font-size:18px;margin:0}
-    /* make header descriptive text white so it's visible */
     .header p{margin:0;opacity:0.95;font-size:13px;color:rgba(255,255,255,0.95)}
-    .header .tiny{color:rgba(255,255,255,0.95)} /* ensure tip text in header is white */
+    .header .tiny{color:rgba(255,255,255,0.95)}
     .main{display:grid;grid-template-columns:1fr 380px;gap:20px;padding:18px}
     @media (max-width:980px){ .main{grid-template-columns:1fr;padding:12px} }
 
@@ -33,7 +34,9 @@
     .file-area{display:flex;flex-direction:column;gap:10px}
     .btn-file{display:inline-flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:white;border:none;cursor:pointer;font-weight:700}
     input[type=file]{display:none}
-    .file-info{background:white;padding:10px;border-radius:8px;border:1px solid #eef2ff;font-size:13px;color:var(--muted)}
+    .file-info-list{background:white;padding:10px;border-radius:8px;border:1px solid #eef2ff;font-size:13px;color:var(--muted);max-height:150px;overflow-y:auto;}
+    .file-info-item { margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #f7f9ff; }
+    .file-info-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
     .col-select{width:100%;padding:10px;border-radius:8px;border:1px solid #e6e9ef;font-size:14px;background:white}
 
     .filter-grid{display:flex;gap:14px;margin-top:12px}
@@ -54,7 +57,6 @@
     .tag:hover{transform:translateY(-3px)}
     .tag.ex{background:#fff7f8;border-color:#ffeef0}
     .tag .remove{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:transparent;color:var(--muted);font-weight:700}
-    .add-area{display:flex;gap:8px;margin-top:10px}
     .custom-input{flex:1;padding:9px;border-radius:8px;border:1px solid #e6e9ef;font-size:13px;background:white}
     .btn{padding:9px 12px;border-radius:8px;border:none;cursor:pointer;font-weight:700}
     .btn.add{background:var(--accent);color:white}
@@ -68,7 +70,7 @@
     .preview{background:white;border-radius:10px;padding:12px;border:1px solid #eef2ff;overflow:auto}
 
     table{width:100%;border-collapse:collapse;font-size:13px}
-    th{Background:linear-gradient(90deg,var(--accent),var(--accent-2));color:white;text-align:left;padding:8px;font-weight:700;position:sticky;top:0}
+    th{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:white;text-align:left;padding:8px;font-weight:700;position:sticky;top:0}
     td{padding:8px;border-bottom:1px solid #f7f9ff}
 
     .controls{display:flex;gap:8px;align-items:center}
@@ -78,32 +80,33 @@
     .process-btn[disabled]{opacity:0.6;cursor:not-allowed}
     .spinner{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,0.35);border-top-color:white;animation:spin .9s linear infinite;display:inline-block}
     @keyframes spin{to{transform:rotate(360deg)}}
-
-    .controls-compact{display:flex;gap:8px;align-items:center}
+    
+    #individualDownloads { margin-top: 10px; }
+    #individualDownloads a { display: block; font-size: 13px; margin-bottom: 5px; color: var(--accent); text-decoration: none; }
+    #individualDownloads a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
       <div>
-        <h1>CSV Data Cleaner</h1>
-        <p class="tiny">Robust CSV parsing + include/exclude filtering — interactive and instant.</p>
+        <h1>Bulk CSV Data Cleaner</h1>
+        <p class="tiny">Upload multiple files, filter them all at once, and download separately or as a zip.</p>
       </div>
       <div class="tiny">Click a tag to remove it. Clear All clears that side only.</div>
     </div>
 
     <div class="main">
+      <!-- LEFT -->
       <div>
         <div class="block file-area">
-          <label class="btn-file" for="csvFile">📁 Choose CSV file</label>
-          <input id="csvFile" type="file" accept=".csv" />
-          <div id="fileInfo" class="file-info" style="display:none">
-            <div><strong>File:</strong> <span id="fileName"></span></div>
-            <div style="margin-top:6px" class="tiny"><strong>Size:</strong> <span id="fileSize"></span> • <strong>Rows:</strong> <span id="rowCount"></span> • <strong>Columns:</strong> <span id="columnCount"></span></div>
-          </div>
+          <label class="btn-file" for="csvFile">📁 Choose CSV files</label>
+          <!-- Add 'multiple' attribute to allow selecting more than one file -->
+          <input id="csvFile" type="file" accept=".csv" multiple />
+          <div id="fileInfoList" class="file-info-list" style="display:none"></div>
 
           <div id="colBlock" style="display:none;margin-top:12px">
-            <div class="tiny" style="margin-bottom:6px">Select column to filter</div>
+            <div class="tiny" style="margin-bottom:6px">Select common column to filter</div>
             <select id="columnSelect" class="col-select"></select>
           </div>
         </div>
@@ -111,43 +114,35 @@
         <div class="filter-grid">
           <div class="filter-card">
             <div class="filter-head">
-              <div>
-                <strong>✅ Inclusion Keywords</strong>
-                <div class="tiny">When enabled, a row must match at least one of these.</div>
-              </div>
+              <strong>✅ Inclusion Keywords</strong>
               <label class="toggle-switch">
                 <input id="inclusionToggle" type="checkbox" checked>
                 <span class="toggle-slider"></span>
               </label>
             </div>
-
+            <div class="tiny" style="margin-bottom: 10px;">When enabled, a row must match at least one of these.</div>
             <div id="inclusionKeywords" class="keywords-list" aria-live="polite"></div>
-
             <div style="display:flex;gap:8px;margin-top:10px">
-              <input id="customInclusion" class="custom-input" placeholder="Add custom keywords (comma separated)" />
+              <input id="customInclusion" class="custom-input" placeholder="Add custom keywords..." />
               <button id="addInclusion" class="btn add">Add</button>
-              <button id="clearInclusion" class="btn clear" title="Remove all inclusion keywords">Clear All</button>
+              <button id="clearInclusion" class="btn clear">Clear All</button>
             </div>
           </div>
 
           <div class="filter-card">
             <div class="filter-head">
-              <div>
-                <strong>❌ Exclusion Keywords</strong>
-                <div class="tiny">When enabled, rows containing any of these are removed.</div>
-              </div>
+              <strong>❌ Exclusion Keywords</strong>
               <label class="toggle-switch">
                 <input id="exclusionToggle" type="checkbox" checked>
                 <span class="toggle-slider"></span>
               </label>
             </div>
-
+             <div class="tiny" style="margin-bottom: 10px;">When enabled, rows containing any of these are removed.</div>
             <div id="exclusionKeywords" class="keywords-list" aria-live="polite"></div>
-
             <div style="display:flex;gap:8px;margin-top:10px">
-              <input id="customExclusion" class="custom-input" placeholder="Add custom keywords (comma separated)" />
+              <input id="customExclusion" class="custom-input" placeholder="Add custom keywords..." />
               <button id="addExclusion" class="btn add">Add</button>
-              <button id="clearExclusion" class="btn clear" title="Remove all exclusion keywords">Clear All</button>
+              <button id="clearExclusion" class="btn clear">Clear All</button>
             </div>
           </div>
         </div>
@@ -163,6 +158,7 @@
         </div>
       </div>
 
+      <!-- RIGHT -->
       <div class="right">
         <div class="block stats">
           <div class="stat">
@@ -185,17 +181,21 @@
 
         <div class="block preview">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-            <div><strong>Preview (first 10 rows)</strong></div>
+            <div style="display:flex; align-items:center; gap: 8px;">
+              <strong>Preview</strong>
+              <select id="previewSelect" class="col-select" style="display:none; width: auto; font-size: 12px; padding: 4px 8px;"></select>
+            </div>
             <div class="controls">
-              <button id="downloadBtn" class="download" style="display:none">⬇️ Download Cleaned CSV</button>
+              <button id="downloadZipBtn" class="download" style="display:none">⬇️ Download All (.zip)</button>
             </div>
           </div>
-          <div id="previewTableWrap" style="max-height:420px;overflow:auto">
+          <div id="previewTableWrap" style="max-height:380px;overflow:auto">
             <table id="previewTable"><tbody></tbody></table>
           </div>
+          <div id="individualDownloads"></div>
         </div>
 
-        <div class="tiny" style="color:var(--muted)">Simplified UI, auto-apply on keyword/toggle changes. Use Clear All per side to remove every keyword on that side. Restore Defaults resets both sides.</div>
+        <div class="tiny" style="color:var(--muted)">Auto-apply on keyword/toggle changes. Restore Defaults resets both sides.</div>
       </div>
     </div>
   </div>
@@ -205,368 +205,23 @@
    FINAL, CONSOLIDATED DEFAULT KEYWORD LISTS
    ------------------------- */
 const MASTER_DEFAULT_INCLUSIONS = [
-  'blockchain',
-  'cbdc',
-  'ceo',
-  'chief',
-  'chief digital officer',
-  'chief innovation officer',
-  'chief product officer',
-  'chief strategy officer',
-  'chief technology officer',
-  'cio',
-  'ciso',
-  'co-founder',
-  'coo',
-  'cpo',
-  'crypto',
-  'cto',
-  'custody',
-  'defi',
-  'digital',
-  'digital asset',
-  'digital banking',
-  'digital currency',
-  'digital transformation lead',
-  'director',
-  'director of digital assets',
-  'director of engineering',
-  'dlt',
-  'ecosystem',
-  'ecosystem growth',
-  'executive',
-  'fintech',
-  'founder',
-  'general manager',
-  'global head of digital assets',
-  'growth lead',
-  'head',
-  'head of blockchain and digital assets',
-  'head of defi',
-  'head of digital',
-  'head of digital assets',
-  'head of ecosystem',
-  'head of engineering',
-  'head of global payments',
-  'head of growth',
-  'head of innovation',
-  'head of it',
-  'head of payments',
-  'head of product',
-  'head of product innovation',
-  'head of retail payments',
-  'head of rwa',
-  'head of stablecoins',
-  'head of strategy',
-  'head of strategy and innovation',
-  'head of tokenization',
-  'innovation',
-  'lead',
-  'managing',
-  'managing director',
-  'managing partner',
-  'payment',
-  'payments',
-  'platform',
-  'president',
-  'product',
-  'product head',
-  'product strategy',
-  'rwa',
-  'specialist',
-  'stablecoin',
-  'stablecoins',
-  'strategy',
-  'tokenization',
-  'transformation',
-  'virtual assets',
-  'vp',
-  'vp of engineering',
-  'vp of it',
-  'vp of product',
-  'web3'
+  'blockchain','cbdc','ceo','chief','chief digital officer','chief innovation officer','chief product officer','chief strategy officer','chief technology officer','cio','ciso','co-founder','coo','cpo','crypto','cto','custody','defi','digital','digital asset','digital banking','digital currency','digital transformation lead','director','director of digital assets','director of engineering','dlt','ecosystem','ecosystem growth','executive','fintech','founder','general manager','global head of digital assets','growth lead','head','head of blockchain and digital assets','head of defi','head of digital','head of digital assets','head of ecosystem','head of engineering','head of global payments','head of growth','head of innovation','head of it','head of payments','head of product','head of product innovation','head of retail payments','head of rwa','head of stablecoins','head of strategy','head of strategy and innovation','head of tokenization','innovation','lead','managing','managing director','managing partner','payment','payments','platform','president','product','product head','product strategy','rwa','specialist','stablecoin','stablecoins','strategy','tokenization','transformation','virtual assets','vp','vp of engineering','vp of it','vp of product','web3'
 ];
 
 const MASTER_DEFAULT_EXCLUSIONS = [
-  'account director',
-  'account executive',
-  'account lead',
-  'account manager',
-  'accountant',
-  'accounting',
-  'acquisition',
-  'actor',
-  'administrator',
-  'administrative assistant',
-  'agile met',
-  'agile practic',
-  'airdrop',
-  'ambassador',
-  'analyst',
-  'android',
-  'android dev',
-  'angel',
-  'angel investor',
-  'art director',
-  'artist',
-  'assistant',
-  'attorney',
-  'audit',
-  'auditor',
-  'back-end developer',
-  'backend',
-  'backend dev',
-  'balance sheet',
-  'bd',
-  'bdr',
-  'broker',
-  'business analyst',
-  'business development',
-  'business development representative',
-  'capital management',
-  'capital planning',
-  'channel',
-  'chief of staff',
-  'chief marketing officer',
-  'cmo',
-  'client service',
-  'climate',
-  'community',
-  'community manager',
-  'confidential',
-  'construction',
-  'content',
-  'content creator',
-  'controller',
-  'copywriter',
-  'courier',
-  'cpa',
-  'creative',
-  'customer',
-  'customer service',
-  'customer service representative',
-  'cyber security',
-  'data admin',
-  'data analyst',
-  'data delivery',
-  'data engineer',
-  'data entry',
-  'data governance',
-  'data lead',
-  'data science',
-  'data scientist',
-  'degen',
-  'designer',
-  'devops engineer',
-  'director of art',
-  'doctor',
-  'editor',
-  'educator',
-  'energy',
-  'entertainment',
-  'entry-level',
-  'epamsystems',
-  'esg',
-  'event manager',
-  'executive assistant',
-  'factory',
-  'film',
-  'finance manager',
-  'financial models',
-  'financial planning',
-  'former',
-  'freelance',
-  'freight',
-  'front-end developer',
-  'frontend dev',
-  'fund finance',
-  'funds',
-  'gambling',
-  'gamer',
-  'gaming',
-  'gas',
-  'general counsel',
-  'giveaway',
-  'graphic designer',
-  'hardware',
-  'hardware engineer',
-  'head of credit',
-  'head of people',
-  'hospitality',
-  'hotel',
-  'hr',
-  'hr manager',
-  'human resources',
-  'igaming',
-  'industrial',
-  'influencer',
-  'intern',
-  'inventory',
-  'investor relations',
-  'ios',
-  'ios dev',
-  'java',
-  'journalist',
-  'junior',
-  'kol',
-  'large language model engineer',
-  'lawyer',
-  'lease',
-  'leasing',
-  'lecturer',
-  'legal',
-  'legal counsel',
-  'llm engineer',
-  'loan',
-  'logistics',
-  'm&a',
-  'machine learning engineer',
-  'manufacturing',
-  'marketer',
-  'marketing',
-  'marketing manager',
-  'marketing specialist',
-  'materials',
-  'mechanical engineer',
-  'media',
-  'meme',
-  'memecoin',
-  'memes',
-  'merger',
-  'mining',
-  'ml engineer',
-  'moderator',
-  'motor',
-  'music',
-  'musician',
-  'non-profit',
-  'nurse',
-  'office manager',
-  'oil',
-  'operations manager',
-  'paralegal',
-  'petrol',
-  'petroleum',
-  'photo',
-  'photograph',
-  'physical',
-  'physician',
-  'plant manager',
-  'podcast',
-  'policy director',
-  'politic',
-  'portfolio manag',
-  'pr director',
-  'pr manager',
-  'prediction',
-  'private banker',
-  'producer',
-  'procurement',
-  'professor',
-  'program',
-  'program director',
-  'program manager',
-  'project management',
-  'promoter',
-  'public relations',
-  'qa',
-  'quality assurance',
-  'quant',
-  'real estate',
-  'recruiter',
-  'recruitment consultant',
-  'regulat',
-  'researcher',
-  'retire',
-  'risk',
-  'sales',
-  'sales consultant',
-  'sales representative',
-  'sanction',
-  'saving',
-  'scientist',
-  'scrum',
-  'senator',
-  'senior software dev',
-  'senior software developer',
-  'senior software engineer',
-  'shill',
-  'shiller',
-  'ship',
-  'shipping',
-  'singer',
-  'smm',
-  'social media',
-  'social media manager',
-  'software dev',
-  'software engineer',
-  'software test engineer',
-  'solidity dev',
-  'smart contracts dev',
-  'staff',
-  'streamer',
-  'supply chain',
-  'support agent',
-  'surveillance',
-  'sustainability',
-  'sys admin',
-  'system administrator',
-  'talent',
-  'talent acquisition',
-  'tax',
-  'teacher',
-  'team head',
-  'technical lead',
-  'technician',
-  'telecom',
-  'tester',
-  'testing',
-  'trader',
-  'trading',
-  'transportation',
-  'travel',
-  'trenches',
-  'truck',
-  'ui & ux',
-  'ui and ux',
-  'ui/ux',
-  'ui&ux',
-  'undisclosed',
-  'user',
-  'ux & ui',
-  'ux and ui',
-  'ux researcher',
-  'ux/ui',
-  'ux&ui',
-  'vehicle',
-  'venture partner',
-  'video',
-  'warehouse',
-  'web developer',
-  'writer',
-  'yapper',
-  'youtube'
+  'account director','account executive','account lead','account manager','accountant','accounting','acquisition','actor','administrator','administrative assistant','agile met','agile practic','airdrop','ambassador','analyst','android','android dev','angel','angel investor','art director','artist','assistant','attorney','audit','auditor','back-end developer','backend','backend dev','balance sheet','bd','bdr','broker','business analyst','business development','business development representative','capital management','capital planning','channel','chief of staff','chief marketing officer','cmo','client service','climate','community','community manager','confidential','construction','content','content creator','controller','copywriter','courier','cpa','creative','customer','customer service','customer service representative','cyber security','data admin','data analyst','data delivery','data engineer','data entry','data governance','data lead','data science','data scientist','degen','devops engineer','director of art','doctor','editor','educator','energy','entertainment','entry-level','epamsystems','esg','event manager','executive assistant','factory','film','finance manager','financial models','financial planning','former','freelance','freight','front-end developer','frontend dev','fund finance','funds','gambling','gamer','gaming','gas','general counsel','giveaway','graphic designer','hardware','hardware engineer','head of credit','head of people','hospitality','hotel','hr','hr manager','human resources','igaming','industrial','influencer','intern','inventory','investor relations','ios','ios dev','java','journalist','junior','kol','large language model engineer','lawyer','lease','leasing','lecturer','legal','legal counsel','llm engineer','loan','logistics','m&a','machine learning engineer','manufacturing','marketer','marketing','marketing manager','marketing specialist','materials','mechanical engineer','media','meme','memecoin','memes','merger','mining','ml engineer','moderator','motor','music','musician','non-profit','nurse','office manager','oil','operations manager','paralegal','petrol','petroleum','photo','photograph','physical','physician','plant manager','podcast','policy director','politic','portfolio manag','pr director','pr manager','prediction','private banker','producer','procurement','professor','program','program director','program manager','project management','promoter','public relations','qa','quality assurance','quant','real estate','recruiter','recruitment consultant','regulat','researcher','retire','risk','sales','sales consultant','sales representative','sanction','saving','scientist','scrum','senator','senior software dev','senior software developer','senior software engineer','shill','shiller','ship','shipping','singer','smm','social media','social media manager','software dev','software engineer','software test engineer','solidity dev','smart contracts dev','staff','streamer','supply chain','support agent','surveillance','sustainability','sys admin','system administrator','talent','talent acquisition','tax','teacher','team head','technical lead','technician','telecom','tester','testing','trader','trading','transportation','travel','trenches','truck','ui & ux','ui and ux','ui/ux','ui&ux','undisclosed','user','ux & ui','ux and ui','ux researcher','ux/ui','ux&ui','vehicle','venture partner','video','warehouse','web developer','writer','yapper','youtube'
 ];
 
-/* Build keyword arrays from master lists */
+/* -------------------------
+   APP STATE & UI REFS
+   ------------------------- */
+// App state now holds an array of file data objects
+let filesData = [];
 let inclusionKeywordsArr = [];
 let exclusionKeywordsArr = [];
+let filesLoaded = false;
 
-function buildKeywordArrays(){
-  inclusionKeywordsArr = MASTER_DEFAULT_INCLUSIONS.map(k => String(k).toLowerCase().trim()).filter(Boolean);
-  exclusionKeywordsArr = MASTER_DEFAULT_EXCLUSIONS.map(k => String(k).toLowerCase().trim()).filter(Boolean);
-}
-
-/* initialize */
-buildKeywordArrays();
-
-/* CSV holders & UI refs */
-let csvData = [];
-let headers = [];
-let processedData = [];
-let fileLoaded = false;
-let originalFileName = '';
-
+// UI References
 const inclusionContainer = document.getElementById('inclusionKeywords');
 const exclusionContainer = document.getElementById('exclusionKeywords');
 const inclusionToggle = document.getElementById('inclusionToggle');
@@ -578,96 +233,151 @@ const addExclusionBtn = document.getElementById('addExclusion');
 const processBtn = document.getElementById('processBtn');
 const processIcon = document.getElementById('processIcon');
 const processText = document.getElementById('processText');
-const downloadBtn = document.getElementById('downloadBtn');
+const downloadZipBtn = document.getElementById('downloadZipBtn');
 const previewTable = document.getElementById('previewTable');
 const resetBtn = document.getElementById('resetBtn');
 const clearInclusionBtn = document.getElementById('clearInclusion');
 const clearExclusionBtn = document.getElementById('clearExclusion');
+const fileInfoList = document.getElementById('fileInfoList');
+const colBlock = document.getElementById('colBlock');
+const columnSelect = document.getElementById('columnSelect');
+const previewSelect = document.getElementById('previewSelect');
+const individualDownloadsContainer = document.getElementById('individualDownloads');
 
-/* Render keywords */
-function renderKeywords(){
-  inclusionContainer.innerHTML = inclusionKeywordsArr.map(k => {
-    const safe = escapeHtml(k);
-    return `<span class="tag" data-type="inclusion" data-key="${safe}">${safe}<span class="remove" title="Remove">&times;</span></span>`;
-  }).join('') || '<span class="tiny" style="color:var(--muted)">No inclusion keywords</span>';
-
-  exclusionContainer.innerHTML = exclusionKeywordsArr.map(k => {
-    const safe = escapeHtml(k);
-    return `<span class="tag ex" data-type="exclusion" data-key="${safe}">${safe}<span class="remove" title="Remove">&times;</span></span>`;
-  }).join('') || '<span class="tiny" style="color:var(--muted)">No exclusion keywords</span>';
-}
-function escapeHtml(str){ return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
-/* Tag removal */
-inclusionContainer.addEventListener('click', function(e){
-  const tag = e.target.closest('.tag');
-  if(!tag) return;
-  if(e.target.classList.contains('remove')){
-    const key = tag.getAttribute('data-key');
-    inclusionKeywordsArr = inclusionKeywordsArr.filter(k => k !== key);
-    renderKeywords();
-    if(fileLoaded) autoReprocess();
-  }
-});
-exclusionContainer.addEventListener('click', function(e){
-  const tag = e.target.closest('.tag');
-  if(!tag) return;
-  if(e.target.classList.contains('remove')){
-    const key = tag.getAttribute('data-key');
-    exclusionKeywordsArr = exclusionKeywordsArr.filter(k => k !== key);
-    renderKeywords();
-    if(fileLoaded) autoReprocess();
-  }
-});
-
-/* Add keywords */
-function addKeywordsFromInput(type){
-  const input = type === 'inclusion' ? customInclusion : customExclusion;
-  const raw = input.value || '';
-  const parts = raw.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-  if(parts.length === 0) return;
-  if(type === 'inclusion'){
-    inclusionKeywordsArr = Array.from(new Set([...inclusionKeywordsArr, ...parts]));
-  } else {
-    exclusionKeywordsArr = Array.from(new Set([...exclusionKeywordsArr, ...parts]));
-  }
-  input.value = '';
-  renderKeywords();
-  if(fileLoaded) autoReprocess();
-}
-addInclusionBtn.addEventListener('click', ()=>addKeywordsFromInput('inclusion'));
-addExclusionBtn.addEventListener('click', ()=>addKeywordsFromInput('exclusion'));
-
-/* Clear all per side */
-clearInclusionBtn.addEventListener('click', function(){
-  if(!confirm('Clear ALL inclusion keywords? This will remove every inclusion keyword.')) return;
-  inclusionKeywordsArr = [];
-  renderKeywords();
-  if(fileLoaded) autoReprocess();
-});
-clearExclusionBtn.addEventListener('click', function(){
-  if(!confirm('Clear ALL exclusion keywords? This will remove every exclusion keyword.')) return;
-  exclusionKeywordsArr = [];
-  renderKeywords();
-  if(fileLoaded) autoReprocess();
-});
-
-/* Reset to defaults */
-resetBtn.addEventListener('click', function(){
-  if(!confirm('Restore default keyword lists? This will overwrite any changes.')) return;
-  // Rebuild keyword arrays from the master lists
-  buildKeywordArrays();
-  renderKeywords();
-  if(fileLoaded) autoReprocess();
-});
-
-/* Toggle auto-reprocess */
-inclusionToggle.addEventListener('change', ()=>{ if(fileLoaded) autoReprocess(); });
-exclusionToggle.addEventListener('change', ()=>{ if(fileLoaded) autoReprocess(); });
 
 /* -------------------------
-   Robust CSV parser (unchanged core)
+   INITIALIZATION & KEYWORD MANAGEMENT
    ------------------------- */
+function buildKeywordArrays(){
+  inclusionKeywordsArr = MASTER_DEFAULT_INCLUSIONS.map(k => String(k).toLowerCase().trim()).filter(Boolean);
+  exclusionKeywordsArr = MASTER_DEFAULT_EXCLUSIONS.map(k => String(k).toLowerCase().trim()).filter(Boolean);
+}
+
+function renderKeywords(){
+  inclusionContainer.innerHTML = inclusionKeywordsArr.map(k => `<span class="tag" data-key="${escapeHtml(k)}">${escapeHtml(k)}<span class="remove" title="Remove">&times;</span></span>`).join('') || '<span class="tiny">No inclusion keywords</span>';
+  exclusionContainer.innerHTML = exclusionKeywordsArr.map(k => `<span class="tag ex" data-key="${escapeHtml(k)}">${escapeHtml(k)}<span class="remove" title="Remove">&times;</span></span>`).join('') || '<span class="tiny">No exclusion keywords</span>';
+}
+
+function escapeHtml(str){ return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// Event listeners for keyword management
+inclusionContainer.addEventListener('click', e => handleTagRemoval(e, 'inclusion'));
+exclusionContainer.addEventListener('click', e => handleTagRemoval(e, 'exclusion'));
+
+function handleTagRemoval(e, type) {
+    const tag = e.target.closest('.tag');
+    if (tag && e.target.classList.contains('remove')) {
+        const key = tag.getAttribute('data-key');
+        if (type === 'inclusion') {
+            inclusionKeywordsArr = inclusionKeywordsArr.filter(k => k !== key);
+        } else {
+            exclusionKeywordsArr = exclusionKeywordsArr.filter(k => k !== key);
+        }
+        renderKeywords();
+        if (filesLoaded) autoReprocess();
+    }
+}
+
+addInclusionBtn.addEventListener('click', () => addKeywordsFromInput('inclusion'));
+addExclusionBtn.addEventListener('click', () => addKeywordsFromInput('exclusion'));
+customInclusion.addEventListener('keydown', e => e.key === 'Enter' && addKeywordsFromInput('inclusion'));
+customExclusion.addEventListener('keydown', e => e.key === 'Enter' && addKeywordsFromInput('exclusion'));
+
+
+function addKeywordsFromInput(type){
+  const input = type === 'inclusion' ? customInclusion : customExclusion;
+  const parts = (input.value || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  if (parts.length === 0) return;
+  
+  const targetArr = type === 'inclusion' ? inclusionKeywordsArr : exclusionKeywordsArr;
+  const newArr = Array.from(new Set([...targetArr, ...parts]));
+  
+  if (type === 'inclusion') {
+    inclusionKeywordsArr = newArr;
+  } else {
+    exclusionKeywordsArr = newArr;
+  }
+
+  input.value = '';
+  renderKeywords();
+  if(filesLoaded) autoReprocess();
+}
+
+clearInclusionBtn.addEventListener('click', () => {
+  if (!confirm('Clear ALL inclusion keywords?')) return;
+  inclusionKeywordsArr = [];
+  renderKeywords();
+  if (filesLoaded) autoReprocess();
+});
+
+clearExclusionBtn.addEventListener('click', () => {
+  if (!confirm('Clear ALL exclusion keywords?')) return;
+  exclusionKeywordsArr = [];
+  renderKeywords();
+  if (filesLoaded) autoReprocess();
+});
+
+resetBtn.addEventListener('click', () => {
+  if (!confirm('Restore default keyword lists? This will overwrite any changes.')) return;
+  buildKeywordArrays();
+  renderKeywords();
+  if (filesLoaded) autoReprocess();
+});
+
+inclusionToggle.addEventListener('change', () => { if(filesLoaded) autoReprocess(); });
+exclusionToggle.addEventListener('change', () => { if(filesLoaded) autoReprocess(); });
+
+
+/* -------------------------
+   FILE HANDLING & PARSING
+   ------------------------- */
+document.getElementById('csvFile').addEventListener('change', handleFileSelect);
+
+function handleFileSelect(e) {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    filesData = []; // Reset on new selection
+    fileInfoList.innerHTML = '';
+    fileInfoList.style.display = 'block';
+    setProcessingState(true, 'Reading files...');
+
+    const promises = Array.from(files).map(file => {
+        if (file.size > 50 * 1024 * 1024) {
+            alert(`File "${file.name}" exceeds 50MB limit and will be skipped.`);
+            return Promise.resolve(null); // Skip this file
+        }
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const text = ev.target.result;
+                const parsed = parseCSV(text);
+                resolve({
+                    name: file.name,
+                    size: file.size,
+                    headers: parsed.headers,
+                    originalRows: parsed.data,
+                    processedRows: []
+                });
+            };
+            reader.readAsText(file);
+        });
+    });
+
+    Promise.all(promises).then(results => {
+        filesData = results.filter(Boolean); // Filter out nulls from skipped files
+        if (filesData.length === 0) {
+            resetUI();
+            return;
+        }
+        
+        filesLoaded = true;
+        updateFileInfoUI();
+        updateCommonColumns();
+        autoReprocess();
+    });
+}
+
 function parseCSV(text){
   const rows = [];
   let field = '';
@@ -676,12 +386,8 @@ function parseCSV(text){
   for(let i=0;i<text.length;i++){
     const ch = text[i];
     if(ch === '"'){
-      if(inQuotes && text[i+1] === '"'){
-        field += '"';
-        i++;
-      } else {
-        inQuotes = !inQuotes;
-      }
+      if(inQuotes && text[i+1] === '"'){ field += '"'; i++; } 
+      else { inQuotes = !inQuotes; }
     } else if((ch === '\r' || ch === '\n') && !inQuotes){
       if(ch === '\r' && text[i+1] === '\n'){ i++; }
       row.push(field);
@@ -698,17 +404,14 @@ function parseCSV(text){
   row.push(field);
   rows.push(row);
 
-  while(rows.length && rows[rows.length-1].every(c => c === '' || c === null || (typeof c === 'string' && c.trim()===''))){
-    rows.pop();
-  }
+  while(rows.length && rows[rows.length-1].every(c => c.trim() === '')){ rows.pop(); }
   if(rows.length === 0) return { headers: [], data: [] };
 
   const hdrs = rows[0].map(h => (h || '').trim());
   const dataRows = rows.slice(1).map(r => {
     const obj = {};
     for(let i=0;i<hdrs.length;i++){
-      const v = r[i] !== undefined && r[i] !== null ? String(r[i]).trim() : '';
-      obj[hdrs[i]] = v;
+      obj[hdrs[i]] = (r[i] !== undefined && r[i] !== null) ? String(r[i]).trim() : '';
     }
     return obj;
   });
@@ -716,255 +419,291 @@ function parseCSV(text){
   return { headers: hdrs, data: dataRows };
 }
 
-/* Convert data -> CSV (unchanged) */
 function dataToCSV(headersArr, dataArr){
   const lines = [];
-  const headerLine = headersArr.map(h => {
-    if(String(h).includes(',') || String(h).includes('"') || String(h).includes('\n')) {
-      return `"${String(h).replace(/"/g,'""')}"`;
-    }
-    return h;
-  }).join(',');
+  const headerLine = headersArr.map(h => `"${String(h).replace(/"/g,'""')}"`).join(',');
   lines.push(headerLine);
-  for(const row of dataArr){
+  dataArr.forEach(row => {
     const vals = headersArr.map(h => {
-      const v = row[h] !== undefined && row[h] !== null ? String(row[h]) : '';
-      if(v.includes(',') || v.includes('"') || v.includes('\n')){
-        return `"${v.replace(/"/g,'""')}"`;
-      }
-      return v;
+      const v = (row[h] !== undefined && row[h] !== null) ? String(row[h]) : '';
+      return `"${v.replace(/"/g,'""')}"`;
     });
     lines.push(vals.join(','));
-  }
+  });
   return lines.join('\n');
 }
 
-/* matchesKeywords unchanged */
-function matchesKeywords(text, keywords){
-  if(!text) return false;
-  const lower = String(text).toLowerCase();
-  return keywords.some(k => {
-    if(!k) return false;
-    return lower.includes(k);
-  });
-}
-
-/* Main filter logic (unchanged) */
+/* -------------------------
+   CORE PROCESSING LOGIC
+   ------------------------- */
 function filterData(){
-  const selectedColumn = document.getElementById('columnSelect').value;
+  const selectedColumn = columnSelect.value;
   if(!selectedColumn){
-    alert('Please select a column to filter');
+    alert('Please select a common column to filter.');
     return;
   }
   const inclusionEnabled = inclusionToggle.checked;
   const exclusionEnabled = exclusionToggle.checked;
 
-  const incKeys = inclusionKeywordsArr.map(k => String(k).toLowerCase().trim()).filter(Boolean);
-  const excKeys = exclusionKeywordsArr.map(k => String(k).toLowerCase().trim()).filter(Boolean);
+  const incKeys = inclusionKeywordsArr.map(k => k.toLowerCase().trim()).filter(Boolean);
+  const excKeys = exclusionKeywordsArr.map(k => k.toLowerCase().trim()).filter(Boolean);
 
-  processedData = csvData.filter(row => {
-    const val = row[selectedColumn] || '';
-
-    if(exclusionEnabled && excKeys.length > 0 && matchesKeywords(val, excKeys)){
-      return false;
-    }
-
-    if(inclusionEnabled && incKeys.length > 0){
-      return matchesKeywords(val, incKeys);
-    }
-
-    return true;
+  filesData.forEach(file => {
+      if (!file.headers.includes(selectedColumn)) {
+          file.processedRows = []; // Or handle as an error
+          return;
+      }
+      file.processedRows = file.originalRows.filter(row => {
+          const val = row[selectedColumn] || '';
+          if (exclusionEnabled && excKeys.length > 0 && matchesKeywords(val, excKeys)) {
+              return false;
+          }
+          if (inclusionEnabled && incKeys.length > 0) {
+              return matchesKeywords(val, incKeys);
+          }
+          return true;
+      });
   });
 
   updateStats();
-  showPreview();
+  updatePreviewSelect();
+  showPreview(0); // Show preview for the first file
+  updateDownloadLinks();
 }
 
-/* Update stats */
-function updateStats(){
-  const original = csvData.length;
-  const filtered = processedData.length;
-  const removed = Math.max(0, original - filtered);
-  const percent = original > 0 ? Math.round((filtered / original) * 100) : 0;
-
-  document.getElementById('originalRows').textContent = original;
-  document.getElementById('filteredRows').textContent = filtered;
-  document.getElementById('removedRows').textContent = removed;
-  document.getElementById('percentageKept').textContent = percent + '%';
+function matchesKeywords(text, keywords){
+  if(!text) return false;
+  const lower = String(text).toLowerCase();
+  return keywords.some(k => lower.includes(k));
 }
 
-/* Show preview */
-function showPreview(){
-  const table = document.getElementById('previewTable');
-  table.innerHTML = '';
-  const tbody = document.createElement('tbody');
-
-  if(!processedData || processedData.length === 0){
-    const tr = document.createElement('tr');
-    const td = document.createElement('td');
-    td.textContent = 'No data matches the filter criteria';
-    td.style.padding = '12px';
-    tr.appendChild(td);
-    tbody.appendChild(tr);
-    table.appendChild(tbody);
-    return;
-  }
-
-  const theadTr = document.createElement('tr');
-  headers.forEach(h => {
-    const th = document.createElement('th');
-    th.textContent = h;
-    theadTr.appendChild(th);
-  });
-  tbody.appendChild(theadTr);
-
-  const preview = processedData.slice(0,10);
-  preview.forEach(r => {
-    const tr = document.createElement('tr');
-    headers.forEach(h => {
-      const td = document.createElement('td');
-      td.textContent = r[h] || '';
-      tr.appendChild(td);
-    });
-    tbody.appendChild(tr);
-  });
-
-  table.appendChild(tbody);
-}
-
-/* File input handling (unchanged) */
-document.getElementById('csvFile').addEventListener('change', function(e){
-  const file = e.target.files[0];
-  if(!file) return;
-  if(file.size > 50 * 1024 * 1024){
-    alert('File size exceeds 50MB limit');
-    e.target.value = '';
-    return;
-  }
-
-  const reader = new FileReader();
-  reader.onload = function(ev){
-    const text = ev.target.result;
-    const parsed = parseCSV(text);
-
-    csvData = parsed.data;
-    headers = parsed.headers;
-
-    document.getElementById('fileName').textContent = file.name;
-    document.getElementById('fileSize').textContent = (file.size / 1024).toFixed(2) + ' KB';
-    document.getElementById('rowCount').textContent = csvData.length;
-    document.getElementById('columnCount').textContent = headers.length;
-    document.getElementById('fileInfo').style.display = 'block';
-
-    // store original filename for output naming
-    originalFileName = file.name || '';
-
-    const colSelect = document.getElementById('columnSelect');
-    colSelect.innerHTML = '<option value="">Select a column...</option>';
-    headers.forEach(h => {
-      const opt = document.createElement('option');
-      opt.value = h;
-      opt.textContent = h;
-      if(h.toLowerCase().includes('job') || h.toLowerCase().includes('title')) opt.selected = true;
-      colSelect.appendChild(opt);
-    });
-
-    document.getElementById('colBlock').style.display = 'block';
-    processBtn.disabled = false;
-    fileLoaded = true;
-
-    processedData = [];
-    updateStats();
-    document.getElementById('previewTable').innerHTML = '';
-    downloadBtn.style.display = 'none';
-
-    renderKeywords();
-    autoReprocess();
-  };
-  reader.readAsText(file);
-});
-
-/* Processing UI */
-function setProcessingState(isProcessing){
-  if(isProcessing){
-    processBtn.disabled = true;
-    processIcon.innerHTML = '<span class="spinner"></span>';
-    processText.textContent = 'Processing...';
-  } else {
-    processBtn.disabled = false;
-    processIcon.innerHTML = '';
-    processText.textContent = '🚀 Process & Filter';
-  }
-}
-
-/* Process click */
-processBtn.addEventListener('click', function(){
-  setProcessingState(true);
-  setTimeout(()=>{
-    try {
-      filterData();
-      downloadBtn.style.display = processedData && processedData.length ? 'inline-block' : 'none';
-    } catch(err){
-      console.error(err);
-      alert('Error during processing: ' + String(err.message || err));
-    } finally {
-      setProcessingState(false);
-    }
-  }, 160);
-});
-
-/* Auto reprocess */
 function autoReprocess(){
-  if(!fileLoaded) return;
-  setProcessingState(true);
+  if(!filesLoaded) return;
+  setProcessingState(true, 'Processing...');
   setTimeout(()=>{
     try{
       filterData();
-      downloadBtn.style.display = processedData && processedData.length ? 'inline-block' : 'none';
     } catch(e){
       console.error(e);
+      alert("An error occurred during processing.");
     } finally {
       setProcessingState(false);
     }
   }, 120);
 }
 
-/* Download cleaned CSV - filename uses original name with _cleaned appended before extension */
-downloadBtn.addEventListener('click', function(){
-  if(!processedData || !processedData.length){
-    alert('No data to download');
-    return;
-  }
-  const csv = dataToCSV(headers, processedData);
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
+processBtn.addEventListener('click', autoReprocess);
 
-  // build filename: originalName -> originalName_cleaned.ext
-  let outName = 'cleaned_data.csv';
-  if(originalFileName && typeof originalFileName === 'string'){
-    const idx = originalFileName.lastIndexOf('.');
-    if(idx === -1){
-      outName = originalFileName + '_cleaned.csv';
-    } else {
-      const base = originalFileName.slice(0, idx);
-      const ext = originalFileName.slice(idx);
-      outName = base + '_cleaned' + ext;
+/* -------------------------
+   UI UPDATE FUNCTIONS
+   ------------------------- */
+function updateFileInfoUI() {
+    fileInfoList.innerHTML = filesData.map(f => `
+        <div class="file-info-item">
+            <strong>${escapeHtml(f.name)}</strong>
+            <div class="tiny">Size: ${(f.size / 1024).toFixed(2)} KB • Rows: ${f.originalRows.length} • Columns: ${f.headers.length}</div>
+        </div>
+    `).join('');
+}
+
+function updateCommonColumns() {
+    if (filesData.length === 0) {
+        colBlock.style.display = 'none';
+        return;
     }
-  }
-  a.download = outName;
+    
+    let commonHeaders = [...filesData[0].headers];
+    for (let i = 1; i < filesData.length; i++) {
+        commonHeaders = commonHeaders.filter(h => filesData[i].headers.includes(h));
+    }
 
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+    columnSelect.innerHTML = '<option value="">Select a common column...</option>';
+    if (commonHeaders.length > 0) {
+        commonHeaders.forEach(h => {
+            const opt = document.createElement('option');
+            opt.value = h;
+            opt.textContent = h;
+            if (h.toLowerCase().includes('job') || h.toLowerCase().includes('title')) {
+                opt.selected = true;
+            }
+            columnSelect.appendChild(opt);
+        });
+        processBtn.disabled = false;
+    } else {
+        columnSelect.innerHTML = '<option value="">No common columns found</option>';
+        processBtn.disabled = true;
+    }
+    colBlock.style.display = 'block';
+}
+
+function updateStats(){
+  const totalOriginal = filesData.reduce((sum, f) => sum + f.originalRows.length, 0);
+  const totalFiltered = filesData.reduce((sum, f) => sum + f.processedRows.length, 0);
+  const removed = totalOriginal - totalFiltered;
+  const percent = totalOriginal > 0 ? Math.round((totalFiltered / totalOriginal) * 100) : 0;
+
+  document.getElementById('originalRows').textContent = totalOriginal;
+  document.getElementById('filteredRows').textContent = totalFiltered;
+  document.getElementById('removedRows').textContent = removed;
+  document.getElementById('percentageKept').textContent = percent + '%';
+}
+
+function updatePreviewSelect() {
+    if (filesData.length > 1) {
+        previewSelect.style.display = 'inline-block';
+        previewSelect.innerHTML = filesData.map((f, i) => `<option value="${i}">${escapeHtml(f.name)}</option>`).join('');
+    } else {
+        previewSelect.style.display = 'none';
+    }
+}
+previewSelect.addEventListener('change', (e) => showPreview(parseInt(e.target.value, 10)));
+
+function showPreview(fileIndex){
+  previewTable.innerHTML = '';
+  if (!filesData[fileIndex]) return;
+
+  const file = filesData[fileIndex];
+  const data = file.processedRows;
+  const headers = file.headers;
+  
+  const tbody = document.createElement('tbody');
+
+  if(!data || data.length === 0){
+    tbody.innerHTML = '<tr><td style="padding:12px;">No data matches the filter criteria for this file.</td></tr>';
+  } else {
+    const theadTr = document.createElement('tr');
+    headers.forEach(h => {
+      const th = document.createElement('th');
+      th.textContent = h;
+      theadTr.appendChild(th);
+    });
+    tbody.appendChild(theadTr);
+
+    data.slice(0,10).forEach(r => {
+      const tr = document.createElement('tr');
+      headers.forEach(h => {
+        const td = document.createElement('td');
+        td.textContent = r[h] || '';
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+  }
+  previewTable.appendChild(tbody);
+}
+
+function setProcessingState(isProcessing, text = 'Processing...'){
+  processBtn.disabled = isProcessing;
+  processIcon.innerHTML = isProcessing ? '<span class="spinner"></span>' : '';
+  processText.textContent = isProcessing ? text : '🚀 Process & Filter';
+}
+
+function resetUI() {
+    filesData = [];
+    filesLoaded = false;
+    fileInfoList.style.display = 'none';
+    colBlock.style.display = 'none';
+    processBtn.disabled = true;
+    downloadZipBtn.style.display = 'none';
+    individualDownloadsContainer.innerHTML = '';
+    previewTable.innerHTML = '';
+    previewSelect.style.display = 'none';
+    updateStats();
+    setProcessingState(false);
+}
+
+/* -------------------------
+   DOWNLOAD FUNCTIONS
+   ------------------------- */
+function updateDownloadLinks() {
+    const anyProcessedData = filesData.some(f => f.processedRows.length > 0);
+    downloadZipBtn.style.display = anyProcessedData ? 'inline-block' : 'none';
+    
+    individualDownloadsContainer.innerHTML = '';
+    if (anyProcessedData) {
+        const header = document.createElement('strong');
+        header.textContent = 'Individual Downloads:';
+        header.style.fontSize = '13px';
+        individualDownloadsContainer.appendChild(header);
+
+        filesData.forEach((file, index) => {
+            if (file.processedRows.length > 0) {
+                const a = document.createElement('a');
+                a.href = '#';
+                a.textContent = `Download ${escapeHtml(file.name)}`;
+                a.onclick = (e) => {
+                    e.preventDefault();
+                    downloadSingleFile(index);
+                };
+                individualDownloadsContainer.appendChild(a);
+            }
+        });
+    }
+}
+
+function downloadSingleFile(fileIndex) {
+    const file = filesData[fileIndex];
+    if (!file || file.processedRows.length === 0) {
+        alert('No data to download for this file.');
+        return;
+    }
+    const csv = dataToCSV(file.headers, file.processedRows);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = getCleanedFileName(file.name);
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+}
+
+downloadZipBtn.addEventListener('click', () => {
+    const zip = new JSZip();
+    let filesAdded = 0;
+
+    filesData.forEach(file => {
+        if (file.processedRows.length > 0) {
+            const csv = dataToCSV(file.headers, file.processedRows);
+            zip.file(getCleanedFileName(file.name), csv);
+            filesAdded++;
+        }
+    });
+    
+    if (filesAdded === 0) {
+        alert('No data available to zip.');
+        return;
+    }
+
+    zip.generateAsync({ type: "blob" }).then(content => {
+        const url = URL.createObjectURL(content);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = "cleaned_files.zip";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    });
 });
 
-/* init */
+function getCleanedFileName(originalName) {
+    const idx = originalName.lastIndexOf('.');
+    if (idx === -1) return originalName + '_cleaned.csv';
+    const base = originalName.slice(0, idx);
+    const ext = originalName.slice(idx);
+    return `${base}_cleaned${ext}`;
+}
+
+/* -------------------------
+   APP INITIALIZATION
+   ------------------------- */
 function init(){
+  buildKeywordArrays();
   renderKeywords();
 }
+
 init();
 </script>
 </body>
